@@ -1,4 +1,4 @@
-# 🕷️ Web Crawler - Bug Bounty Edition | By BlueB1rd
+# 🕷️ Ninkaz Web Crawler | By BlueB1rd
 
 Un outil puissant et complet pour cartographier les sites web et découvrir des vulnérabilités lors de vos tests de sécurité (bug bounty).
 
