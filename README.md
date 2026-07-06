@@ -1,38 +1,37 @@
-# 🕷️ Ninkaz Web Crawler | By BlueB1rd
 
-Un outil puissant et complet pour cartographier les sites web et découvrir des vulnérabilités lors de vos tests de sécurité (bug bounty).
+# 🕷️ Ninkaz - Web Crawler pour Bug Bounty
+
+Un crawler web puissant et flexible conçu pour la cartographie de sites web et la recherche de vulnérabilités en bug bounty.
 
 ## ✨ Fonctionnalités
 
-### 🔍 Crawling & Reconnaissance
-- ✅ Crawl récursif des pages web
-- ✅ Extraction automatique des URLs internes et externes
-- ✅ Détection des répertoires et fichiers intéressants
-- ✅ Support des fichiers JavaScript, JSON, XML, etc.
-- ✅ Extraction d'URLs depuis le contenu des fichiers
+### 🔍 Exploration Web
+- ✅ Crawl récursif avec gestion de la profondeur
+- ✅ Extraction automatique d'URLs depuis le contenu HTML/JS
+- ✅ Support des répertoires parents et fichiers intéressants
+- ✅ Fuzzing de répertoires avec wordlist
+- ✅ Gestion des checkpoints pour reprendre un crawl interrompu
 
-### 🔐 Sécurité & Secrets
-- 🔑 Détection automatique des secrets (API keys, tokens, passwords)
-- 🔐 Scan de credentials en dur dans le code
-- 📊 Classification par sévérité (CRITICAL, HIGH, MEDIUM)
-- 🎯 Identification des "juicy targets" (endpoints sensibles)
+### 🔐 Sécurité & Analyse
+- ✅ Détection automatique de secrets (API keys, tokens, credentials)
+- ✅ Analyse des headers HTTP de sécurité
+- ✅ Détection des technologies utilisées (React, Angular, Django, etc.)
+- ✅ Identification des "juicy targets" (endpoints sensibles)
+- ✅ Scan des patterns sensibles (admin, api, config, etc.)
 
-### 🛠️ Analyse Avancée
-- 🔧 Détection des technologies utilisées (frameworks, CMS, etc.)
-- 🔒 Analyse des headers de sécurité HTTP
-- 📈 Fuzzing de répertoires avec wordlist
-- 👻 Mode stealth avec rotation User-Agent
-- 🔌 Support des proxies HTTP
-
-### 💾 Gestion d'État
-- 📂 Sauvegarde automatique des checkpoints
-- 🔄 Reprise de crawl interrompu
-- 📊 Export en TXT et JSON
-- 📈 Comparaison avec crawl précédent
+### 🛠️ Options Avancées
+- ✅ Mode stealth avec rotation automatique des User-Agents
+- ✅ Support des proxies HTTP
+- ✅ **Support des cookies personnalisés** 🍪
+- ✅ **Support des headers HTTP personnalisés** 📋
+- ✅ Rate limiting configurable
+- ✅ Filtrage par regex (inclusion/exclusion)
+- ✅ Export en JSON ou TXT
+- ✅ Comparaison avec crawls précédents
 
 ---
 
-## 🚀 Installation
+## 📦 Installation
 
 ### Prérequis
 - Python 3.7+
@@ -45,356 +44,292 @@ pip install requests beautifulsoup4
 
 ### Téléchargement
 ```bash
-git clone https://github.com/votre-repo/web-crawler.git
-cd web-crawler
+git clone https://github.com/[USER]/ninkaz.git
+cd ninkaz
 ```
 
 ---
 
-## 📖 Utilisation
+## 🚀 Utilisation
 
 ### Crawl Basique
 ```bash
-python3 ninka.py https://example.com
+python ninkaz.py https://example.com
 ```
 
-### Avec Options de Performance
+### Avec Cookies
 ```bash
-python3 ninka.py https://example.com -d 2 --rate-limit 30
+python ninkaz.py https://example.com --cookies "session=abc123; token=xyz789"
 ```
 
-### Avec Scan de Secrets
+### Avec Headers Personnalisés
 ```bash
-python3 ninka.py https://example.com --scan-secrets --capture-headers --detect-tech
+python ninkaz.py https://example.com --headers "Authorization: Bearer token123; X-Custom: value"
 ```
 
-### Mode Stealth (Rotation User-Agent)
+### Avec Cookies ET Headers
 ```bash
-python3 ninka.py https://example.com --stealth
+python ninkaz.py https://example.com \
+  --cookies "session=abc123" \
+  --headers "Authorization: Bearer token; X-API-Key: key123"
+```
+
+### Mode Stealth + Secrets
+```bash
+python ninkaz.py https://example.com --stealth --scan-secrets --detect-tech
 ```
 
 ### Avec Wordlist (Fuzzing)
 ```bash
-python3 ninka.py https://example.com --wordlist common-paths.txt
+python ninkaz.py https://example.com --wordlist common-paths.txt
 ```
 
 ### Profondeur Limitée
 ```bash
-python3 ninka.py https://example.com --max-depth 3
+python ninkaz.py https://example.com --max-depth 3
 ```
 
-### Fichier Unique
+### Avec Filtrage
 ```bash
-python3 ninka.py https://example.com/assets/app.js --single-file
-```
-
-### Export JSON
-```bash
-python3 ninka.py https://example.com --format json
-```
-
-### Comparaison avec Crawl Précédent
-```bash
-python3 ninka.py https://example.com --diff previous_crawl.json
-```
-
-### Reprise d'un Crawl Interrompu
-```bash
-python3 ninka.py https://example.com --resume
-```
-
----
-
-## 🎯 Options Complètes
-
-```
-usage: ninka.py [-h] [-d DELAY] [--rate-limit RATE_LIMIT] [--max-depth MAX_DEPTH]
-                 [--include-pattern INCLUDE_PATTERN] [--exclude-pattern EXCLUDE_PATTERN]
-                 [--scan-secrets] [--capture-headers] [--detect-tech]
-                 [--stealth] [--user-agent USER_AGENT] [--wordlist WORDLIST]
-                 [--resume] [--checkpoint CHECKPOINT] [--single-file]
-                 [-o OUTPUT] [--format {txt,json}] [--diff DIFF]
-                 [-v] [--proxy PROXY]
-                 url
-
-Positional Arguments:
-  url                           🌐 URL du site web à cartographier
-
-Optional Arguments:
-  -h, --help                    Affiche l'aide
-  -d, --delay DELAY             ⏱️  Délai entre requêtes en secondes (défaut: 1)
-  --rate-limit RATE_LIMIT       ⏱️  Nombre max de requêtes/minute (ex: 30)
-  --max-depth MAX_DEPTH         📏 Profondeur maximale de crawl (ex: 3)
-  --include-pattern PATTERN     ✅ Regex pour inclure certains chemins
-  --exclude-pattern PATTERN     ❌ Regex pour exclure certains chemins
-  --scan-secrets                🔐 Recherche les secrets/credentials
-  --capture-headers             🔒 Capture et analyse les headers HTTP
-  --detect-tech                 🛠️  Détecte les technologies utilisées
-  --stealth                     👻 Mode stealth (rotation User-Agent)
-  --user-agent AGENT            🤖 User-Agent personnalisé
-  --wordlist FILE               📚 Fichier wordlist pour fuzzing
-  --resume                      🔄 Reprendre un crawl interrompu
-  --checkpoint FILE             💾 Fichier de checkpoint (défaut: crawler_checkpoint.json)
-  --single-file                 📄 Analyser uniquement un fichier
-  -o, --output FILE             📁 Fichier de sortie (défaut: rapport_crawl.txt)
-  --format {txt,json}           📊 Format de sortie (défaut: txt)
-  --diff FILE                   📈 Comparer avec crawl précédent
-  -v, --verbose                 📢 Mode verbeux
-  --proxy PROXY                 🔌 Proxy HTTP (ex: http://127.0.0.1:8080)
-```
-
----
-
-## 📊 Exemples Pratiques
-
-### 1️⃣ Reconnaissance Complète
-```bash
-python3 ninka.py https://target.com \
-  --scan-secrets \
-  --capture-headers \
-  --detect-tech \
-  --max-depth 2 \
-  -o rapport_complet.txt
-```
-
-### 2️⃣ Fuzzing de Répertoires
-```bash
-python3 ninka.py https://target.com \
-  --wordlist /path/to/wordlist.txt \
-  --rate-limit 30 \
-  --stealth
-```
-
-### 3️⃣ Analyse d'une API
-```bash
-python3 ninka.py https://target.com/api/v1 \
-  --include-pattern "api|v[0-9]" \
-  --scan-secrets \
-  --format json
-```
-
-### 4️⃣ Analyse d'un Fichier JavaScript
-```bash
-python3 ninka.py https://target.com/assets/app.js \
-  --single-file \
-  --scan-secrets \
-  --detect-tech
-```
-
-### 5️⃣ Mode Stealth avec Proxy
-```bash
-python3 ninka.py https://target.com \
-  --stealth \
-  --proxy http://127.0.0.1:8080 \
-  --delay 3 \
-  --rate-limit 20
-```
-
----
-
-## 📋 Rapport de Sortie
-
-Le rapport généré contient :
-
-### 📊 Statistiques Globales
-- Total URLs visitées
-- Pages internes découvertes
-- Fichiers intéressants
-- Juicy targets
-- Secrets détectés
-- Technologies identifiées
-
-### 🔐 Secrets Détectés
-- **CRITICAL** : AWS Keys, Private Keys, GitHub Tokens
-- **HIGH** : API Keys, Passwords, Bearer Tokens
-- **MEDIUM** : Autres credentials
-
-### 🎯 Juicy Targets
-- Endpoints sensibles (admin, api, config, etc.)
-- Fichiers intéressants (.env, .git, .sql, etc.)
-- Patterns de sécurité
-
-### 🛠️ Technologies
-- Frameworks (React, Angular, Vue, etc.)
-- CMS (WordPress, Drupal, Joomla, etc.)
-- Serveurs (Apache, Nginx, IIS, etc.)
-- Langages (PHP, Python, Node.js, etc.)
-
-### 🔒 Analyse Sécurité
-- Headers manquants
-- Configurations exposées
-- Endpoints non sécurisés
-
----
-
-## 🔍 Patterns de Détection
-
-### Secrets Détectés
-- 🔑 API Keys
-- 🔐 AWS Keys (AKIA...)
-- 🔑 Private Keys (RSA, DSA, EC)
-- 🔑 Bearer Tokens
-- 🔑 JWT Tokens
-- 🔑 Database URLs
-- 🔑 Slack Tokens
-- 🔑 GitHub Tokens
-- 🔑 Stripe Keys
-- 🔑 Firebase Config
-- 🔑 Google API Keys
-- 🔑 Passwords & Credentials
-
-### Fichiers Intéressants
-- `.js`, `.json`, `.xml`, `.txt`
-- `.php`, `.asp`, `.aspx`, `.jsp`
-- `.env`, `.config`, `.sql`
-- `.git`, `.svn`, `.bak`, `.old`
-- Archives : `.zip`, `.tar`, `.gz`, `.rar`
-
----
-
-## ⚙️ Configuration Avancée
-
-### Filtrage par Pattern
-```bash
-# Inclure uniquement les endpoints API
-python3 ninka.py https://target.com --include-pattern "api|v[0-9]"
-
-# Exclure les ressources statiques
-python3 ninka.py https://target.com --exclude-pattern "cdn|static|assets"
+python ninkaz.py https://example.com \
+  --include-pattern "api|admin" \
+  --exclude-pattern "cdn|static|assets"
 ```
 
 ### Rate Limiting
 ```bash
-# 30 requêtes par minute
-python3 ninka.py https://target.com --rate-limit 30
+python ninkaz.py https://example.com --rate-limit 30
 ```
 
-### Profondeur de Crawl
+### Export JSON
 ```bash
-# Limiter à 3 niveaux de profondeur
-python3 ninka.py https://target.com --max-depth 3
+python ninkaz.py https://example.com --format json -o rapport.json
+```
+
+### Reprendre un Crawl Interrompu
+```bash
+python ninkaz.py https://example.com --resume
+```
+
+### Comparaison avec Crawl Précédent
+```bash
+python ninkaz.py https://example.com --diff previous_crawl.json
+```
+
+### Fichier Unique
+```bash
+python ninkaz.py https://example.com/assets/app.js --single-file --scan-secrets
 ```
 
 ---
 
-## 📁 Structure des Fichiers
+## 📋 Arguments Disponibles
 
-```
-web-crawler/
-├── ninka.py                 # Script principal
-├── rapport_crawl.txt        # Rapport généré (TXT)
-├── rapport_crawl.json       # Rapport généré (JSON)
-├── crawler_checkpoint.json  # Checkpoint automatique
-├── wordlist.txt             # Wordlist personnalisée
-└── README.md                # Cette documentation
+| Argument | Description | Exemple |
+|----------|-------------|---------|
+| `url` | URL cible à crawler | `https://example.com` |
+| `-d, --delay` | Délai entre requêtes (secondes) | `-d 2` |
+| `--rate-limit` | Max requêtes/minute | `--rate-limit 30` |
+| `--max-depth` | Profondeur maximale | `--max-depth 3` |
+| `--include-pattern` | Regex d'inclusion | `--include-pattern "api\|admin"` |
+| `--exclude-pattern` | Regex d'exclusion | `--exclude-pattern "cdn\|static"` |
+| `--scan-secrets` | Rechercher les secrets | `--scan-secrets` |
+| `--capture-headers` | Analyser les headers | `--capture-headers` |
+| `--detect-tech` | Détecter les technologies | `--detect-tech` |
+| `--stealth` | Mode stealth (rotation UA) | `--stealth` |
+| `--user-agent` | User-Agent personnalisé | `--user-agent "Mozilla/5.0..."` |
+| `--wordlist` | Fichier wordlist | `--wordlist paths.txt` |
+| `--resume` | Reprendre un crawl | `--resume` |
+| `--checkpoint` | Fichier checkpoint | `--checkpoint state.json` |
+| `--single-file` | Analyser un seul fichier | `--single-file` |
+| `-o, --output` | Fichier de sortie | `-o rapport.txt` |
+| `--format` | Format (txt/json) | `--format json` |
+| `--diff` | Comparer avec crawl précédent | `--diff old_crawl.json` |
+| `-v, --verbose` | Mode verbeux | `-v` |
+| `--proxy` | Proxy HTTP | `--proxy http://127.0.0.1:8080` |
+| `--cookies` | Cookies à envoyer | `--cookies "name=value; name2=value2"` |
+| `--headers` | Headers personnalisés | `--headers "Header: value; X-Custom: val"` |
+
+---
+
+## 🍪 Format des Cookies
+
+Les cookies doivent être au format `name=value` séparés par des points-virgules :
+
+```bash
+--cookies "session_id=abc123; user_token=xyz789; theme=dark"
 ```
 
 ---
 
-## 💾 Formats de Sortie
+## 📋 Format des Headers
 
-### Format TXT
-Rapport lisible avec emojis et mise en forme ASCII
+Les headers doivent être au format `Header: value` séparés par des points-virgules :
 
-### Format JSON
-```json
-{
-  "metadata": {
-    "date": "2024-01-15T10:30:00",
-    "site": "https://example.com",
-    "format_version": "1.0"
-  },
-  "statistics": {
-    "total_urls_visited": 150,
-    "secrets_found": 5,
-    "technologies": 12
-  },
-  "secrets": [
-    {
-      "type": "Password ($scope)",
-      "url": "https://example.com/assets/app.js",
-      "value": "SmartIndustryDemo!2023",
-      "severity": "CRITICAL"
-    }
-  ],
-  "juicy_targets": [...],
-  "technologies": [...]
-}
+```bash
+--headers "Authorization: Bearer token123; X-API-Key: mykey; X-Custom-Header: value"
 ```
 
 ---
 
-## 🛡️ Bonnes Pratiques
+## 📊 Résultats
 
-### ✅ À Faire
-- ✅ Obtenir une autorisation écrite avant de tester
-- ✅ Respecter le `robots.txt` et les conditions d'utilisation
-- ✅ Utiliser un délai approprié entre les requêtes
-- ✅ Tester sur un environnement de test d'abord
-- ✅ Sauvegarder les rapports pour comparaison future
+### Rapport TXT
+Le rapport inclut :
+- 📊 Statistiques globales
+- 🎯 Cibles prometteuses (juicy targets)
+- 🔐 Secrets détectés
+- 🛠️ Technologies identifiées
+- 📄 Pages internes
+- 📎 Fichiers intéressants
+- 🌍 URLs externes
 
-### ❌ À Éviter
-- ❌ Crawler sans autorisation
-- ❌ Utiliser un délai trop court (DoS)
-- ❌ Partager les secrets découverts publiquement
-- ❌ Modifier ou supprimer des données
-- ❌ Accéder à des données sensibles sans permission
+### Rapport JSON
+Structure complète avec :
+- Métadonnées
+- Statistiques
+- Listes détaillées
+- Headers analysés
+
+---
+
+## 🔐 Secrets Détectés
+
+Le scanner recherche automatiquement :
+- 📧 Emails
+- 🔑 API Keys (AWS, Google, Stripe, etc.)
+- 🔐 Tokens (JWT, Bearer, Slack, GitHub)
+- 💾 Credentials (username/password)
+- 🗄️ Database URLs
+- 🔒 Private Keys
+- 🔧 Firebase Config
+- Et plus...
+
+---
+
+## 🛠️ Technologies Détectées
+
+React, Angular, Vue.js, jQuery, Bootstrap, WordPress, Drupal, Joomla, Django, Flask, Laravel, Node.js, Express, ASP.NET, Java, etc.
+
+---
+
+## 📈 Exemples Complets
+
+### Audit Complet d'un Site
+```bash
+python ninkaz.py https://example.com \
+  --stealth \
+  --scan-secrets \
+  --capture-headers \
+  --detect-tech \
+  --rate-limit 30 \
+  --format json \
+  -o audit_complet.json \
+  -v
+```
+
+### Crawl avec Authentification
+```bash
+python ninkaz.py https://example.com \
+  --cookies "session=abc123; auth_token=xyz" \
+  --headers "Authorization: Bearer mytoken" \
+  --scan-secrets \
+  -o authenticated_crawl.txt
+```
+
+### Fuzzing + Secrets
+```bash
+python ninkaz.py https://example.com \
+  --wordlist common-paths.txt \
+  --scan-secrets \
+  --max-depth 2 \
+  -d 1
+```
+
+### Comparaison de Deux Crawls
+```bash
+# Premier crawl
+python ninkaz.py https://example.com -o crawl1.json --format json
+
+# Deuxième crawl (après modifications)
+python ninkaz.py https://example.com --diff crawl1.json -o crawl2.json --format json
+```
+
+---
+
+## 💾 Checkpoints
+
+Les checkpoints permettent de reprendre un crawl interrompu :
+
+```bash
+# Démarrer un crawl
+python ninkaz.py https://example.com
+
+# (Ctrl+C pour interrompre)
+
+# Reprendre plus tard
+python ninkaz.py https://example.com --resume
+```
+
+Le fichier `crawler_checkpoint.json` est créé automatiquement.
+
+---
+
+## ⚙️ Configuration Recommandée
+
+### Pour un Crawl Rapide
+```bash
+python ninkaz.py https://example.com -d 0.5 --rate-limit 60
+```
+
+### Pour un Crawl Discret
+```bash
+python ninkaz.py https://example.com --stealth -d 3 --rate-limit 20
+```
+
+### Pour un Audit Complet
+```bash
+python ninkaz.py https://example.com \
+  --stealth \
+  --scan-secrets \
+  --capture-headers \
+  --detect-tech \
+  --wordlist wordlist.txt \
+  --max-depth 4 \
+  -d 2 \
+  --rate-limit 30 \
+  -v
+```
 
 ---
 
 ## 🐛 Dépannage
 
-### Le crawl est trop lent
+### Timeout
+Augmentez le délai :
 ```bash
-# Réduire le délai
-python3 ninka.py https://target.com -d 0.5
-
-# Augmenter le rate limit
-python3 ninka.py https://target.com --rate-limit 60
+python ninkaz.py https://example.com -d 3
 ```
 
-### Erreur de connexion
+### Trop de requêtes bloquées
+Activez le mode stealth :
 ```bash
-# Utiliser un proxy
-python3 ninka.py https://target.com --proxy http://127.0.0.1:8080
-
-# Augmenter le timeout
-# (Modifier timeout=10 dans fetch_page())
+python ninkaz.py https://example.com --stealth --rate-limit 20
 ```
 
-### Trop de faux positifs
+### Besoin d'authentification
+Utilisez les cookies et headers :
 ```bash
-# Utiliser des patterns de filtrage
-python3 ninka.py https://target.com --exclude-pattern "test|demo|example"
+python ninkaz.py https://example.com \
+  --cookies "session=value" \
+  --headers "Authorization: Bearer token"
 ```
 
-### Reprendre un crawl
+### Erreurs d'indentation
+Assurez-vous que le fichier est en UTF-8 :
 ```bash
-# Utiliser --resume
-python3 ninka.py https://target.com --resume
+python3 -m py_compile ninkaz.py
 ```
-
----
-
-## 📊 Cas d'Usage
-
-### 🎯 Bug Bounty
-- Reconnaissance initiale du scope
-- Découverte d'endpoints cachés
-- Identification de secrets exposés
-- Détection de technologies vulnérables
-
-### 🔒 Pentest
-- Cartographie complète du site
-- Identification des points d'entrée
-- Analyse des headers de sécurité
-- Découverte de fichiers sensibles
-
-### 🛡️ Security Audit
-- Vérification de la configuration
-- Détection de mauvaises pratiques
-- Comparaison avec audits précédents
-- Documentation des findings
 
 ---
 
@@ -404,11 +339,11 @@ MIT License - Libre d'utilisation
 
 ---
 
-## ⚠️ Disclaimer
+## ⚠️ Avertissement Légal
 
-**Cet outil est fourni à titre éducatif uniquement.**
+Cet outil est destiné à être utilisé **uniquement sur des sites dont vous avez l'autorisation**. 
 
-L'utilisateur est seul responsable de l'utilisation de cet outil. Ne l'utilisez que sur des systèmes pour lesquels vous avez une autorisation explicite. L'utilisation non autorisée est illégale.
+L'utilisation non autorisée peut être illégale. Respectez toujours les lois locales et les conditions d'utilisation des sites.
 
 ---
 
@@ -417,20 +352,16 @@ L'utilisateur est seul responsable de l'utilisation de cet outil. Ne l'utilisez 
 Les contributions sont bienvenues ! N'hésitez pas à :
 - Signaler des bugs
 - Proposer des améliorations
-- Ajouter de nouveaux patterns
-- Améliorer la documentation
+- Soumettre des pull requests
 
 ---
 
 ## 📞 Support
 
-Pour toute question ou problème :
-- 📧 Email : support@example.com
-- 🐛 Issues : GitHub Issues
-- 💬 Discussions : GitHub Discussions
+Pour toute question ou problème, consultez la documentation ou ouvrez une issue.
 
 ---
 
-## 🎉 Merci d'utiliser Web Crawler !
+**Créé avec ❤️ pour la communauté Bug Bounty**
 
-**Bon crawling et bonne chasse aux vulnérabilités ! 🕷️🎯**
+🕷️ **Ninkaz** - Web Crawler pour Bug Bounty FR
