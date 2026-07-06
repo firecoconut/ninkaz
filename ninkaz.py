@@ -18,7 +18,7 @@ class WebSiteCrawler:
                  checkpoint_file="crawler_checkpoint.json", single_file=False, max_depth=None,
                  include_pattern=None, exclude_pattern=None, scan_secrets=False,
                  analyze_headers=False, stealth=False, wordlist=None, detect_tech=False,
-                 proxy=None, format_output='txt'):
+                 proxy=None, format_output='txt', cookies=None, custom_headers=None):
         """
         Initialise le crawler avec toutes les options
         """
@@ -38,6 +38,8 @@ class WebSiteCrawler:
         self.detect_tech = detect_tech
         self.proxy = proxy
         self.format_output = format_output
+        self.cookies = self._parse_cookies(cookies) if cookies else {}
+        self.custom_headers = self._parse_custom_headers(custom_headers) if custom_headers else {}
 
         # User-Agents pour mode stealth
         self.user_agents = [
@@ -132,6 +134,40 @@ class WebSiteCrawler:
 
         self.interrupted = False
         signal.signal(signal.SIGINT, self.signal_handler)
+
+    def _parse_cookies(self, cookies_str):
+        """Parse les cookies depuis une chaîne"""
+        cookies_dict = {}
+        if not cookies_str:
+            return cookies_dict
+        try:
+            for cookie in cookies_str.split(';'):
+                cookie = cookie.strip()
+                if '=' in cookie:
+                    name, value = cookie.split('=', 1)
+                    cookies_dict[name.strip()] = value.strip()
+            if self.verbose:
+                print(f"🍪 {len(cookies_dict)} cookie(s) chargé(s)")
+        except Exception as e:
+            print(f"⚠️  Erreur parsing cookies: {e}")
+        return cookies_dict
+
+    def _parse_custom_headers(self, headers_str):
+        """Parse les headers personnalisés"""
+        headers_dict = {}
+        if not headers_str:
+            return headers_dict
+        try:
+            for header in headers_str.split(';'):
+                header = header.strip()
+                if ':' in header:
+                    name, value = header.split(':', 1)
+                    headers_dict[name.strip()] = value.strip()
+            if self.verbose:
+                print(f"📋 {len(headers_dict)} header(s) personnalisé(s) chargé(s)")
+        except Exception as e:
+            print(f"⚠️  Erreur parsing headers: {e}")
+        return headers_dict
 
     def signal_handler(self, sig, frame):
         """Gère l'interruption (Ctrl+C) pour sauvegarder l'état"""
@@ -570,6 +606,8 @@ class WebSiteCrawler:
             headers = {
                 'User-Agent': self.current_user_agent
             }
+            if self.custom_headers:
+                headers.update(self.custom_headers)
 
             proxies = None
             if self.proxy:
@@ -578,7 +616,7 @@ class WebSiteCrawler:
                     'https': self.proxy,
                 }
 
-            response = requests.get(url, headers=headers, timeout=10, allow_redirects=True, proxies=proxies)
+            response = requests.get(url, headers=headers, cookies=self.cookies, timeout=10, allow_redirects=True, proxies=proxies)
             response.raise_for_status()
             return response
         except requests.exceptions.Timeout:
@@ -765,9 +803,11 @@ class WebSiteCrawler:
                 self.rotate_user_agent()
 
                 headers = {'User-Agent': self.current_user_agent}
+                if self.custom_headers:
+                    headers.update(self.custom_headers)
                 proxies = {'http': self.proxy, 'https': self.proxy} if self.proxy else None
 
-                response = requests.head(test_url, headers=headers, timeout=5, allow_redirects=True, proxies=proxies)
+                response = requests.head(test_url, headers=headers, cookies=self.cookies, timeout=5, allow_redirects=True, proxies=proxies)
 
                 if response.status_code < 400:
                     print(f"  ✅ [{response.status_code}] {test_url}")
@@ -1356,6 +1396,12 @@ if __name__ == "__main__":
     parser.add_argument('--proxy', type=str,
                         help='🔌 Proxy HTTP à utiliser (ex: http://127.0.0.1:8080)')
 
+    parser.add_argument('--cookies', type=str,
+                        help='🍪 Cookies à envoyer (format: "name1=value1; name2=value2")')
+
+    parser.add_argument('--headers', type=str,
+                        help='📋 Headers HTTP personnalisés (format: "Header1: value1; Header2: value2")')
+
     args = parser.parse_args()
 
     print("╔════════════════════════════════════════════════════════════════════════════╗")
@@ -1383,6 +1429,10 @@ if __name__ == "__main__":
         print(f"  👻 Mode stealth        : Activé")
     if args.proxy:
         print(f"  🔌 Proxy               : {args.proxy}")
+    if args.cookies:
+        print(f"  🍪 Cookies             : {len(args.cookies.split(';'))} cookie(s)")
+    if args.headers:
+        print(f"  📋 Headers custom      : {len(args.headers.split(';'))} header(s)")
     if args.wordlist:
         print(f"  📚 Wordlist            : {args.wordlist}")
     if args.scan_secrets:
@@ -1422,7 +1472,9 @@ if __name__ == "__main__":
             wordlist=args.wordlist,
             detect_tech=args.detect_tech,
             proxy=args.proxy,
-            format_output=args.format_output
+            format_output=args.format_output,
+            cookies=args.cookies,
+            custom_headers=args.headers
         )
 
         print("🚀 Démarrage du crawl...\n")
