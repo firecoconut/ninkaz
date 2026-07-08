@@ -1577,7 +1577,7 @@ if __name__ == "__main__":
 
         print()
         print("╔════════════════════════════════════════════════════════════════════════════╗")
-        print("║                  ✅ CRAWL TERMINÉ AVEC SUCCÈS! 🎉                         ║")
+        print("║                  ✅ CRAWL TERMINÉ AVEC SUCCÈS! 🎉                          ║")
         print("╚════════════════════════════════════════════════════════════════════════════╝")
         print()
         print(f"📋 Consultez le rapport : {args.output}")
