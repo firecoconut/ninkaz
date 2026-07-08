@@ -1496,7 +1496,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     print("╔════════════════════════════════════════════════════════════════════════════╗")
-    print("║                  🕷️  WEB CRAWLER - BUG BOUNTY 🎯                          ║")
+    print("║                  🕷️  WEB CRAWLER - BUG BOUNTY 🎯                           ║")
     print("╚════════════════════════════════════════════════════════════════════════════╝")
     print()
     print("⚙️  CONFIGURATION:")
