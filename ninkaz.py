@@ -15,10 +15,11 @@ from difflib import unified_diff
 
 class WebSiteCrawler:
     def __init__(self, base_url, delay=1, verbose=False, user_agent=None, rate_limit=None,
-                 checkpoint_file="crawler_checkpoint.json", single_file=False, max_depth=None,
-                 include_pattern=None, exclude_pattern=None, scan_secrets=False,
-                 analyze_headers=False, stealth=False, wordlist=None, detect_tech=False,
-                 proxy=None, format_output='txt', cookies=None, custom_headers=None):
+             checkpoint_file="crawler_checkpoint.json", single_file=False, max_depth=None,
+             include_pattern=None, exclude_pattern=None, scan_secrets=False,
+             analyze_headers=False, stealth=False, wordlist=None, detect_tech=False,
+             proxy=None, format_output='txt', cookies=None, custom_headers=None,
+             scan_custom_headers_flag=False):
         """
         Initialise le crawler avec toutes les options
         """
@@ -33,6 +34,7 @@ class WebSiteCrawler:
         self.exclude_pattern = re.compile(exclude_pattern) if exclude_pattern else None
         self.scan_secrets = scan_secrets
         self.analyze_headers = analyze_headers
+        self.scan_custom_headers_flag = scan_custom_headers_flag          
         self.stealth = stealth
         self.wordlist = wordlist
         self.detect_tech = detect_tech
@@ -69,6 +71,7 @@ class WebSiteCrawler:
         self.juicy_targets = []
         self.secrets_found = []
         self.headers_info = defaultdict(dict)
+        self.custom_headers_found = []
         self.technologies = set()
         self.url_depths = {}
 
@@ -128,11 +131,6 @@ class WebSiteCrawler:
             'Google API Key': r'AIza[0-9A-Za-z\-_]{35}',
             'Hex String (Potential Secret)': r'(?:secret|key|token|password)\s*[=:]\s*["\']?([a-f0-9]{32,})["\']?',
             'Username/Password Pair': r'(?:username|user|login)\s*[=:]\s*["\']([^"\']{3,})["\'].*?(?:password|passwd|pwd)\s*[=:]\s*["\']([^"\']{6,})["\']',
-            
-            # ===== PATTERNS PERSONNALISÉS =====
-            'X-APP-ID': r'X-APP-ID\s*[=:]\s*([a-zA-Z0-9\-]{10,})',
-            'X-API-KEY': r'X-API-KEY\s*[=:]\s*([a-zA-Z0-9\-]{20,})',
-            'X-Custom-Header': r'X-[A-Za-z0-9\-]+\s*[=:]\s*([a-zA-Z0-9\-_]{10,})',
         }
 
         self.tech_patterns = {
@@ -155,6 +153,77 @@ class WebSiteCrawler:
 
         self.interrupted = False
         signal.signal(signal.SIGINT, self.signal_handler)
+
+    def scan_custom_headers(self, headers, source_url):
+        """Scanne les headers HTTP pour détecter les secrets ET les headers custom"""
+        if not self.scan_custom_headers_flag:
+            return
+    
+        # Patterns pour détecter les secrets dans les headers
+        header_secret_patterns = {
+            'Authorization': r'Authorization\s*[=:]\s*(?:Bearer\s+)?([a-zA-Z0-9\-_.]{20,})',
+            'X-API-Key': r'X-API-Key\s*[=:]\s*([a-zA-Z0-9\-_]{15,})',
+            'X-APP-ID': r'X-APP-ID\s*[=:]\s*([a-zA-Z0-9\-]{10,})',
+            'X-Token': r'X-Token\s*[=:]\s*([a-zA-Z0-9\-_]{15,})',
+            'X-Access-Token': r'X-Access-Token\s*[=:]\s*([a-zA-Z0-9\-_]{15,})',
+            'X-Auth-Token': r'X-Auth-Token\s*[=:]\s*([a-zA-Z0-9\-_]{15,})',
+            'X-Custom-Auth': r'X-Custom-Auth\s*[=:]\s*([a-zA-Z0-9\-_]{15,})',
+            'Cookie': r'(?:session|token|auth|key|secret)\s*=\s*([a-zA-Z0-9\-_]{10,})',
+        }
+    
+        # Headers custom à tracker (sans secrets)
+        custom_header_prefixes = ['X-', 'Custom-', 'App-', 'API-']
+        
+        secrets_found_count = 0
+        custom_headers_found = []
+    
+        for header_name, header_value in headers.items():
+            header_str = f"{header_name}: {header_value}"
+            
+            # 1️⃣ SCAN DES SECRETS DANS LES HEADERS
+            for secret_type, pattern in header_secret_patterns.items():
+                try:
+                    matches = re.finditer(pattern, header_str, re.IGNORECASE)
+                    
+                    for match in matches:
+                        secret_value = match.group(0)
+                        
+                        masked_value = secret_value[:10] + '*' * max(0, len(secret_value) - 20) + secret_value[-10:] if len(secret_value) > 20 else '*' * len(secret_value)
+                        
+                        self.secrets_found.append({
+                            'type': f'Header: {secret_type}',
+                            'url': source_url,
+                            'value': masked_value,
+                            'full_value': secret_value,
+                            'severity': 'CRITICAL'
+                        })
+                        
+                        print(f"  🔐 SECRET DÉTECTÉ (Header: {secret_type}): {masked_value}")
+                        secrets_found_count += 1
+                        
+                except Exception as e:
+                    self.log(f"Erreur avec pattern header {secret_type}: {e}", "WARNING")
+    
+            # 2️⃣ DÉTECTION DES HEADERS CUSTOM (sans secrets)
+            for prefix in custom_header_prefixes:
+                if header_name.startswith(prefix):
+                    custom_headers_found.append({
+                        'name': header_name,
+                        'value': header_value,
+                        'url': source_url
+                    })
+                    print(f"  📋 HEADER CUSTOM DÉTECTÉ: {header_name}: {header_value}")
+                    break
+    
+        # Stocker les headers custom trouvés
+        if custom_headers_found:
+            if not hasattr(self, 'custom_headers_found'):
+                self.custom_headers_found = []
+            self.custom_headers_found.extend(custom_headers_found)
+    
+        if secrets_found_count == 0 and len(custom_headers_found) == 0 and self.verbose:
+            print(f"  ℹ️  Aucun secret ou header custom détecté")
+
 
     def _parse_cookies(self, cookies_str):
         """Parse les cookies depuis une chaîne"""
@@ -832,6 +901,7 @@ class WebSiteCrawler:
         content_type = response.headers.get('Content-Type', '').lower()
 
         self.analyze_http_headers(url, response.headers)
+        self.scan_custom_headers(response.headers, url)
 
         if self.is_parseable(url):
             try:
@@ -893,6 +963,7 @@ class WebSiteCrawler:
         content_type = response.headers.get('Content-Type', '').lower()
 
         self.analyze_http_headers(url, response.headers)
+        self.scan_custom_headers(response.headers, url)
 
         if self.is_parseable(url):
             try:
@@ -1106,6 +1177,23 @@ class WebSiteCrawler:
         print("🎯 JUICY TARGETS - CIBLES PROMETTEUSES")
         print("="*80)
 
+        if hasattr(self, 'custom_headers_found') and self.custom_headers_found:
+            print(f"\n📋 {len(self.custom_headers_found)} header(s) personnalisé(s) trouvé(s):\n")
+            
+            by_name = defaultdict(list)
+            for header in self.custom_headers_found:
+                by_name[header['name']].append(header)
+            
+            for header_name, occurrences in sorted(by_name.items()):
+                print(f"\n  📌 {header_name}:")
+                for occurrence in occurrences[:5]:
+                    print(f"     🌐 {occurrence['url']}")
+                    print(f"     💾 Valeur: {occurrence['value']}")
+                if len(occurrences) > 5:
+                    print(f"     ... et {len(occurrences) - 5} autres occurrences")
+        else:
+            print("\n✅ Aucun header personnalisé détecté")
+
         if self.juicy_targets:
             print(f"\n🎪 {len(self.juicy_targets)} cible(s) prometteuse(s):\n")
 
@@ -1225,9 +1313,11 @@ class WebSiteCrawler:
                 'technologies': len(self.technologies),
                 'external_urls': len(self.external_urls),
                 'urls_in_files': total_urls_in_files,
+                'custom_headers_found': len(self.custom_headers_found) if hasattr(self, 'custom_headers_found') else 0,
             },
             'juicy_targets': self.juicy_targets,
             'secrets': self.secrets_found,
+            'custom_headers': self.custom_headers_found if hasattr(self, 'custom_headers_found') else [],
             'technologies': list(self.technologies),
             'internal_pages': sorted(list(self.internal_pages)),
             'interesting_files': sorted(list(self.interesting_files)),
@@ -1364,6 +1454,8 @@ if __name__ == "__main__":
                         help='🔐 Recherche les secrets/credentials dans le contenu')
     parser.add_argument('--capture-headers', action='store_true',
                         help='🔒 Capture et analyse les headers HTTP')
+    parser.add_argument('--scan-headers-secrets', action='store_true',
+                    help='🔐 Recherche les secrets dans les headers HTTP')
     parser.add_argument('--detect-tech', action='store_true',
                         help='🛠️  Détecte les technologies utilisées')
 
@@ -1438,6 +1530,8 @@ if __name__ == "__main__":
         print(f"  🔐 Scan secrets        : Activé")
     if args.capture_headers:
         print(f"  🔒 Analyse headers     : Activée")
+    if args.scan_headers_secrets:
+        print(f"  🔐 Scan headers secrets: Activé")
     if args.detect_tech:
         print(f"  🛠️  Détection tech      : Activée")
     if args.single_file:
@@ -1473,7 +1567,8 @@ if __name__ == "__main__":
             proxy=args.proxy,
             format_output=args.format_output,
             cookies=args.cookies,
-            custom_headers=args.headers
+            custom_headers=args.headers,
+            scan_custom_headers_flag=args.scan_headers_secrets
         )
 
         print("🚀 Démarrage du crawl...\n")
