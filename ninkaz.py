@@ -99,7 +99,7 @@ class WebSiteCrawler:
         ]
 
         self.secret_patterns = {
-             #'Email': r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+            'Email': r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
             'Password (Direct)': r'(?:password|passwd|pwd|pass)\s*[=:]\s*["\']([^"\']{6,})["\']',
             'Password ($scope)': r'\$scope\.password\s*=\s*["\']([^"\']{6,})["\']',
             'Email ($scope)': r'\$scope\.email\s*=\s*["\']([^"\']{6,})["\']',
@@ -112,11 +112,14 @@ class WebSiteCrawler:
             'Slack Token': r'xox[baprs]-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,34}',
             'GitHub Token': r'ghp_[0-9a-zA-Z]{36}',
             'Stripe Key': r'sk_(?:live|test)_[0-9a-zA-Z]{24,}',
+            'Generic Secret': r'(?:secret|api_key|apikey|access_key|secret_key|token|auth)\s*[=:]\s*["\']([^"\']{8,})["\']',
+            'URL Credentials': r'(?:https?://)?[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]{6,}@',
+            'Firebase Config': r'apiKey["\']?\s*[=:]\s*["\']([^"\']{30,})["\']',
+            'Google API Key': r'AIza[0-9A-Za-z\-_]{35}',
+            'Hex String (Potential Secret)': r'(?:secret|key|token|password)\s*[=:]\s*["\']?([a-f0-9]{32,})["\']?',
+            'Username/Password Pair': r'(?:username|user|login)\s*[=:]\s*["\']([^"\']{3,})["\'].*?(?:password|passwd|pwd)\s*[=:]\s*["\']([^"\']{6,})["\']',
             'X-APP-ID': r'X-APP-ID\s*[=:]\s*([a-zA-Z0-9\-]{10,})',
             'X-API-KEY': r'X-API-KEY\s*[=:]\s*([a-zA-Z0-9\-]{20,})',
-            'Custom-Token': r'Custom-Token\s*[=:]\s*([a-zA-Z0-9\-]{15,})',
-            'Authorization': r'Authorization\s*[=:]\s*Bearer\s+([a-zA-Z0-9\-_.]{20,})',
-            'X-Custom-Key': r'X-Custom-Key\s*[=:]\s*([a-zA-Z0-9]{10,})',
         }
 
         self.tech_patterns = {
@@ -277,33 +280,10 @@ class WebSiteCrawler:
         """Scanne le contenu à la recherche de secrets"""
         if not self.scan_secrets:
             return
-
-        # Patterns améliorés et plus génériques
-        improved_patterns = {
-            'Email': r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
-            'Password (Direct)': r'(?:password|passwd|pwd|pass)\s*[=:]\s*["\']([^"\']{6,})["\']',
-            'Password ($scope)': r'\$scope\.password\s*=\s*["\']([^"\']{6,})["\']',
-            'Email ($scope)': r'\$scope\.email\s*=\s*["\']([^"\']{6,})["\']',
-            'API Key': r'(?:api[_-]?key|apikey|api_key)\s*[=:]\s*["\']?([a-zA-Z0-9\-_]{15,})["\']?',
-            'AWS Key': r'AKIA[0-9A-Z]{16}',
-            'Private Key': r'-----BEGIN (?:RSA |DSA |EC )?PRIVATE KEY-----',
-            'Bearer Token': r'Bearer\s+([a-zA-Z0-9\-_\.]{20,})',
-            'JWT Token': r'eyJ[a-zA-Z0-9_-]*\.eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*',
-            'Database URL': r'(?:mysql|postgres|mongodb)://[^\s\'"]+',
-            'Slack Token': r'xox[baprs]-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,34}',
-            'GitHub Token': r'ghp_[0-9a-zA-Z]{36}',
-            'Stripe Key': r'sk_(?:live|test)_[0-9a-zA-Z]{24,}',
-            'Generic Secret': r'(?:secret|api_key|apikey|access_key|secret_key|token|auth)\s*[=:]\s*["\']([^"\']{8,})["\']',
-            'URL Credentials': r'(?:https?://)?[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]{6,}@',
-            'Firebase Config': r'apiKey["\']?\s*[=:]\s*["\']([^"\']{30,})["\']',
-            'Google API Key': r'AIza[0-9A-Za-z\-_]{35}',
-            'Hex String (Potential Secret)': r'(?:secret|key|token|password)\s*[=:]\s*["\']?([a-f0-9]{32,})["\']?',
-            'Username/Password Pair': r'(?:username|user|login)\s*[=:]\s*["\']([^"\']{3,})["\'].*?(?:password|passwd|pwd)\s*[=:]\s*["\']([^"\']{6,})["\']',
-        }
-
+    
         secrets_found_count = 0
-
-        for secret_type, pattern in improved_patterns.items():
+    
+        for secret_type, pattern in self.secret_patterns.items():
             try:
                 matches = re.finditer(pattern, content, re.IGNORECASE | re.DOTALL)
             
@@ -316,13 +296,13 @@ class WebSiteCrawler:
                             continue
                 
                     masked_value = secret_value[:10] + '*' * max(0, len(secret_value) - 20) + secret_value[-10:] if len(secret_value) > 20 else '*' * len(secret_value)
-
+    
                     self.secrets_found.append({
                         'type': secret_type,
                         'url': source_url,
                         'value': masked_value,
-                        'full_value': secret_value,  # Garder la valeur complète pour le rapport
-                        'severity': 'CRITICAL' if secret_type in ['AWS Key', 'Private Key', 'GitHub Token', 'Password ($scope)', 'Email ($scope)'] else 'HIGH'
+                        'full_value': secret_value,
+                        'severity': 'CRITICAL' if secret_type in ['AWS Key', 'Private Key', 'GitHub Token', 'Password ($scope)', 'Email ($scope)', 'X-APP-ID', 'X-API-KEY'] else 'HIGH'
                     })
                 
                     print(f"  🔐 SECRET DÉTECTÉ ({secret_type}): {masked_value}")
@@ -330,9 +310,10 @@ class WebSiteCrawler:
                 
             except Exception as e:
                 self.log(f"Erreur avec pattern {secret_type}: {e}", "WARNING")
-
+    
         if secrets_found_count == 0 and self.verbose:
             print(f"  ℹ️  Aucun secret détecté")
+
 
     def detect_technologies(self, content, headers):
         """Détecte les technologies utilisées"""
