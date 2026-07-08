@@ -1,4 +1,3 @@
-
 # 🕷️ Ninkaz - Web Crawler pour Bug Bounty
 
 Un crawler web puissant et flexible conçu pour la cartographie de sites web et la recherche de vulnérabilités en bug bounty.
@@ -18,6 +17,8 @@ Un crawler web puissant et flexible conçu pour la cartographie de sites web et 
 - ✅ Détection des technologies utilisées (React, Angular, Django, etc.)
 - ✅ Identification des "juicy targets" (endpoints sensibles)
 - ✅ Scan des patterns sensibles (admin, api, config, etc.)
+- ✅ **Détection des headers personnalisés (X-*, Custom-*, App-*, API-*)** 📋
+- ✅ **Scan des secrets dans les headers HTTP** 🔐
 
 ### 🛠️ Options Avancées
 - ✅ Mode stealth avec rotation automatique des User-Agents
@@ -121,6 +122,22 @@ python ninkaz.py https://example.com --diff previous_crawl.json
 python ninkaz.py https://example.com/assets/app.js --single-file --scan-secrets
 ```
 
+### Scan des Secrets dans les Headers
+```bash
+python ninkaz.py https://example.com --scan-headers-secrets
+```
+
+### Audit Complet
+```bash
+python ninkaz.py https://example.com \
+  --scan-secrets \
+  --scan-headers-secrets \
+  --capture-headers \
+  --detect-tech \
+  --stealth \
+  -v
+```
+
 ---
 
 ## 📋 Arguments Disponibles
@@ -134,6 +151,7 @@ python ninkaz.py https://example.com/assets/app.js --single-file --scan-secrets
 | `--include-pattern` | Regex d'inclusion | `--include-pattern "api\|admin"` |
 | `--exclude-pattern` | Regex d'exclusion | `--exclude-pattern "cdn\|static"` |
 | `--scan-secrets` | Rechercher les secrets | `--scan-secrets` |
+| `--scan-headers-secrets` | Rechercher secrets dans headers | `--scan-headers-secrets` |
 | `--capture-headers` | Analyser les headers | `--capture-headers` |
 | `--detect-tech` | Détecter les technologies | `--detect-tech` |
 | `--stealth` | Mode stealth (rotation UA) | `--stealth` |
@@ -172,6 +190,44 @@ Les headers doivent être au format `Header: value` séparés par des points-vir
 
 ---
 
+## 🔐 Secrets Détectés
+
+Le scanner recherche automatiquement :
+
+### Patterns Génériques
+- 📧 Emails
+- 🔑 API Keys (tous les formats : `api_key`, `apiKey`, `API_KEY`, etc.)
+- 🔐 Tokens (Bearer, JWT, Auth, Access, Refresh)
+- 💾 Credentials (username/password)
+- 🗄️ Database URLs
+- 🔒 Private Keys
+- 🔧 Firebase Config
+- 🌐 Google API Keys
+
+### Patterns Spécifiques
+- 🔑 AWS Keys (`AKIA...`)
+- 🎫 Slack Tokens (`xox...`)
+- 🐙 GitHub Tokens (`ghp_...`)
+- 💳 Stripe Keys (`sk_live_...`, `sk_test_...`)
+
+### Headers Personnalisés
+- 📋 `X-API-Key`
+- 📋 `X-APP-ID`
+- 📋 `X-Token`
+- 📋 `X-Access-Token`
+- 📋 `X-Auth-Token`
+- 📋 `X-Custom-Auth`
+- 📋 `Authorization`
+- 📋 Tous les headers `X-*` personnalisés
+
+---
+
+## 🛠️ Technologies Détectées
+
+React, Angular, Vue.js, jQuery, Bootstrap, WordPress, Drupal, Joomla, Django, Flask, Laravel, Node.js, Express, ASP.NET, Java, et plus...
+
+---
+
 ## 📊 Résultats
 
 ### Rapport TXT
@@ -179,6 +235,7 @@ Le rapport inclut :
 - 📊 Statistiques globales
 - 🎯 Cibles prometteuses (juicy targets)
 - 🔐 Secrets détectés
+- 📋 Headers personnalisés détectés
 - 🛠️ Technologies identifiées
 - 📄 Pages internes
 - 📎 Fichiers intéressants
@@ -190,26 +247,7 @@ Structure complète avec :
 - Statistiques
 - Listes détaillées
 - Headers analysés
-
----
-
-## 🔐 Secrets Détectés
-
-Le scanner recherche automatiquement :
-- 📧 Emails
-- 🔑 API Keys (AWS, Google, Stripe, etc.)
-- 🔐 Tokens (JWT, Bearer, Slack, GitHub)
-- 💾 Credentials (username/password)
-- 🗄️ Database URLs
-- 🔒 Private Keys
-- 🔧 Firebase Config
-- Et plus...
-
----
-
-## 🛠️ Technologies Détectées
-
-React, Angular, Vue.js, jQuery, Bootstrap, WordPress, Drupal, Joomla, Django, Flask, Laravel, Node.js, Express, ASP.NET, Java, etc.
+- Headers personnalisés trouvés
 
 ---
 
@@ -220,6 +258,7 @@ React, Angular, Vue.js, jQuery, Bootstrap, WordPress, Drupal, Joomla, Django, Fl
 python ninkaz.py https://example.com \
   --stealth \
   --scan-secrets \
+  --scan-headers-secrets \
   --capture-headers \
   --detect-tech \
   --rate-limit 30 \
@@ -232,8 +271,9 @@ python ninkaz.py https://example.com \
 ```bash
 python ninkaz.py https://example.com \
   --cookies "session=abc123; auth_token=xyz" \
-  --headers "Authorization: Bearer mytoken" \
+  --headers "Authorization: Bearer mytoken; X-API-Key: key123" \
   --scan-secrets \
+  --scan-headers-secrets \
   -o authenticated_crawl.txt
 ```
 
@@ -242,6 +282,7 @@ python ninkaz.py https://example.com \
 python ninkaz.py https://example.com \
   --wordlist common-paths.txt \
   --scan-secrets \
+  --scan-headers-secrets \
   --max-depth 2 \
   -d 1
 ```
@@ -253,6 +294,23 @@ python ninkaz.py https://example.com -o crawl1.json --format json
 
 # Deuxième crawl (après modifications)
 python ninkaz.py https://example.com --diff crawl1.json -o crawl2.json --format json
+```
+
+### Détection des Headers Personnalisés
+```bash
+python ninkaz.py https://example.com \
+  --scan-headers-secrets \
+  --capture-headers \
+  -v
+```
+
+Affichera :
+```
+📋 HEADER CUSTOM DÉTECTÉ: X-Custom-Header: my-value
+📋 HEADER CUSTOM DÉTECTÉ: X-Request-ID: 12345
+📋 HEADER CUSTOM DÉTECTÉ: App-Version: 1.2.3
+🔐 SECRET DÉTECTÉ (Header: Authorization): Bearer eyJ0eXAi...
+🔐 SECRET DÉTECTÉ (Header: X-API-Key): Qae-fgh654...
 ```
 
 ---
@@ -292,6 +350,7 @@ python ninkaz.py https://example.com --stealth -d 3 --rate-limit 20
 python ninkaz.py https://example.com \
   --stealth \
   --scan-secrets \
+  --scan-headers-secrets \
   --capture-headers \
   --detect-tech \
   --wordlist wordlist.txt \
@@ -299,6 +358,16 @@ python ninkaz.py https://example.com \
   -d 2 \
   --rate-limit 30 \
   -v
+```
+
+### Pour une Reconnaissance Rapide
+```bash
+python ninkaz.py https://example.com \
+  --scan-secrets \
+  --scan-headers-secrets \
+  --detect-tech \
+  --max-depth 2 \
+  -d 0.5
 ```
 
 ---
@@ -329,6 +398,12 @@ python ninkaz.py https://example.com \
 Assurez-vous que le fichier est en UTF-8 :
 ```bash
 python3 -m py_compile ninkaz.py
+```
+
+### Pas de secrets détectés
+Assurez-vous d'utiliser `--scan-secrets` et `--scan-headers-secrets` :
+```bash
+python ninkaz.py https://example.com --scan-secrets --scan-headers-secrets -v
 ```
 
 ---
@@ -362,6 +437,98 @@ Pour toute question ou problème, consultez la documentation ou ouvrez une issue
 
 ---
 
+## 🎯 Cas d'Usage
+
+### Reconnaissance (Recon)
+```bash
+python ninkaz.py https://target.com --detect-tech --max-depth 2 -d 0.5
+```
+
+### Recherche de Secrets
+```bash
+python ninkaz.py https://target.com --scan-secrets --scan-headers-secrets -v
+```
+
+### Cartographie Complète
+```bash
+python ninkaz.py https://target.com \
+  --stealth \
+  --scan-secrets \
+  --scan-headers-secrets \
+  --capture-headers \
+  --detect-tech \
+  --wordlist paths.txt \
+  --format json
+```
+
+### Suivi des Changements
+```bash
+# Crawl initial
+python ninkaz.py https://target.com -o baseline.json --format json
+
+# Crawl ultérieur
+python ninkaz.py https://target.com --diff baseline.json -o current.json --format json
+```
+
+---
+
+## 📊 Sortie Exemple
+
+```
+🕷️  WEB CRAWLER - BUG BOUNTY 🎯
+
+⚙️  CONFIGURATION:
+  🌐 URL cible           : https://example.com
+  ⏱️  Délai               : 1s
+  📁 Fichier de sortie   : rapport_crawl.txt
+  📊 Format              : TXT
+  🔐 Scan secrets        : Activé
+  🔐 Scan headers secrets: Activé
+  🔒 Analyse headers     : Activée
+  🛠️  Détection tech      : Activée
+
+🚀 Démarrage du crawl...
+
+🕷️  Exploration [1 / 50] (profondeur: 0): https://example.com
+  🔗 15 URL(s) trouvée(s)
+  ⚙️  React détecté
+  📋 HEADER CUSTOM DÉTECTÉ: X-Custom-Header: value
+  🔐 SECRET DÉTECTÉ (Header: Authorization): Bearer eyJ0eXAi...
+
+...
+
+📋 RAPPORT DE CARTOGRAPHIE WEB
+════════════════════════════════════════════════════════════════════════════
+
+📊 STATISTIQUES
+  ✓ URLs visitées: 45
+  📄 Pages internes: 38
+  📎 Fichiers intéressants: 7
+  🎯 Cibles juteuses: 12
+  🔐 Secrets trouvés: 3
+  🛠️  Technologies: 5
+  🌍 URLs externes: 8
+
+🔐 SECRETS TROUVÉS
+  🔑 API Key (camelCase): https://example.com/config.js
+     💾 Valeur: Qae-fgh65421345asd61dfg-fgh-5487
+  🔑 Header: X-API-Key: https://example.com
+     💾 Valeur: 0ok3ed-8521da-klop23
+
+📋 HEADERS PERSONNALISÉS DÉTECTÉS
+  📌 X-Custom-Header:
+     🌐 https://example.com
+     💾 Valeur: my-value
+  📌 X-Request-ID:
+     🌐 https://example.com/api/users
+     💾 Valeur: 12345
+
+✅ CRAWL TERMINÉ AVEC SUCCÈS! 🎉
+```
+
+---
+
 **Créé avec ❤️ pour la communauté Bug Bounty**
 
-🕷️ **Ninkaz** - Web Crawler pour Bug Bounty FR
+🕷️ **Ninkaz** - Web Crawler pour Bug Bounty
+```
