@@ -1335,7 +1335,7 @@ class WebSiteCrawler:
         """Exporte les résultats en TXT"""
         with open(filename, 'w', encoding='utf-8') as f:
             f.write("╔════════════════════════════════════════════════════════════════════════════╗\n")
-            f.write("║                    📋 RAPPORT DE CRAWL WEB - BUG BOUNTY                    ║\n")
+            f.write("║                    📋 RAPPORT DE CRAWL WEB - BUG BOUNTY                     ║\n")
             f.write("╚════════════════════════════════════════════════════════════════════════════╝\n\n")
 
             f.write(f"📅 Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
