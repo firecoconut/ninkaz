@@ -103,7 +103,15 @@ class WebSiteCrawler:
             'Password (Direct)': r'(?:password|passwd|pwd|pass)\s*[=:]\s*["\']([^"\']{6,})["\']',
             'Password ($scope)': r'\$scope\.password\s*=\s*["\']([^"\']{6,})["\']',
             'Email ($scope)': r'\$scope\.email\s*=\s*["\']([^"\']{6,})["\']',
-            'API Key': r'(?:api[_-]?key|apikey|api_key)\s*[=:]\s*["\']?([a-zA-Z0-9\-_]{15,})["\']?',
+            
+            # ===== PATTERNS GÉNÉRIQUES POUR API KEYS =====
+            'API Key (Generic)': r'(?:api[_-]?key|apikey|api_key|access_key|secret_key|app_key|app_secret|client_key|client_secret)\s*[=:]\s*["\']?([a-zA-Z0-9\-_]{15,})["\']?',
+            'API Key (camelCase)': r'(?:defaultXApi|defaultApi|apiKey|appKey|clientKey|secretKey|accessKey)\s*[=:]\s*["\']?([a-zA-Z0-9\-_]{15,})["\']?',
+            'API Key (snake_case)': r'(?:default_api|default_x_api|api_secret|app_secret|client_secret|access_secret)\s*[=:]\s*["\']?([a-zA-Z0-9\-_]{15,})["\']?',
+            'API Key (UPPERCASE)': r'(?:DEFAULT_API|DEFAULT_X_API|API_KEY|API_SECRET|APP_KEY|CLIENT_KEY)\s*[=:]\s*["\']?([a-zA-Z0-9\-_]{15,})["\']?',
+            'Generic Token Pattern': r'(?:token|auth_token|access_token|refresh_token|bearer_token|api_token)\s*[=:]\s*["\']?([a-zA-Z0-9\-_.]{20,})["\']?',
+            
+            # ===== PATTERNS SPÉCIFIQUES =====
             'AWS Key': r'AKIA[0-9A-Z]{16}',
             'Private Key': r'-----BEGIN (?:RSA |DSA |EC )?PRIVATE KEY-----',
             'Bearer Token': r'Bearer\s+([a-zA-Z0-9\-_\.]{20,})',
@@ -112,14 +120,19 @@ class WebSiteCrawler:
             'Slack Token': r'xox[baprs]-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,34}',
             'GitHub Token': r'ghp_[0-9a-zA-Z]{36}',
             'Stripe Key': r'sk_(?:live|test)_[0-9a-zA-Z]{24,}',
-            'Generic Secret': r'(?:secret|api_key|apikey|access_key|secret_key|token|auth)\s*[=:]\s*["\']([^"\']{8,})["\']',
+            
+            # ===== PATTERNS GÉNÉRIQUES SUPPLÉMENTAIRES =====
+            'Generic Secret': r'(?:secret|password|passwd|pwd|pass|credential|credentials|auth|authorization)\s*[=:]\s*["\']([^"\']{8,})["\']',
             'URL Credentials': r'(?:https?://)?[a-zA-Z0-9_-]+:[a-zA-Z0-9_-]{6,}@',
             'Firebase Config': r'apiKey["\']?\s*[=:]\s*["\']([^"\']{30,})["\']',
             'Google API Key': r'AIza[0-9A-Za-z\-_]{35}',
             'Hex String (Potential Secret)': r'(?:secret|key|token|password)\s*[=:]\s*["\']?([a-f0-9]{32,})["\']?',
             'Username/Password Pair': r'(?:username|user|login)\s*[=:]\s*["\']([^"\']{3,})["\'].*?(?:password|passwd|pwd)\s*[=:]\s*["\']([^"\']{6,})["\']',
+            
+            # ===== PATTERNS PERSONNALISÉS =====
             'X-APP-ID': r'X-APP-ID\s*[=:]\s*([a-zA-Z0-9\-]{10,})',
             'X-API-KEY': r'X-API-KEY\s*[=:]\s*([a-zA-Z0-9\-]{20,})',
+            'X-Custom-Header': r'X-[A-Za-z0-9\-]+\s*[=:]\s*([a-zA-Z0-9\-_]{10,})',
         }
 
         self.tech_patterns = {
