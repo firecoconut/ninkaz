@@ -99,7 +99,7 @@ class WebSiteCrawler:
         ]
 
         self.secret_patterns = {
-            'Email': r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
+             #'Email': r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
             'Password (Direct)': r'(?:password|passwd|pwd|pass)\s*[=:]\s*["\']([^"\']{6,})["\']',
             'Password ($scope)': r'\$scope\.password\s*=\s*["\']([^"\']{6,})["\']',
             'Email ($scope)': r'\$scope\.email\s*=\s*["\']([^"\']{6,})["\']',
@@ -112,6 +112,11 @@ class WebSiteCrawler:
             'Slack Token': r'xox[baprs]-[0-9]{10,13}-[0-9]{10,13}-[a-zA-Z0-9]{24,34}',
             'GitHub Token': r'ghp_[0-9a-zA-Z]{36}',
             'Stripe Key': r'sk_(?:live|test)_[0-9a-zA-Z]{24,}',
+            'X-APP-ID': r'X-APP-ID\s*[=:]\s*([a-zA-Z0-9\-]{10,})',
+            'X-API-KEY': r'X-API-KEY\s*[=:]\s*([a-zA-Z0-9\-]{20,})',
+            'Custom-Token': r'Custom-Token\s*[=:]\s*([a-zA-Z0-9\-]{15,})',
+            'Authorization': r'Authorization\s*[=:]\s*Bearer\s+([a-zA-Z0-9\-_.]{20,})',
+            'X-Custom-Key': r'X-Custom-Key\s*[=:]\s*([a-zA-Z0-9]{10,})',
         }
 
         self.tech_patterns = {
