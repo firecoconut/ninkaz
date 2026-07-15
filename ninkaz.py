@@ -68,7 +68,7 @@ class WebSiteCrawler:
         self.interesting_files = set()
         self.directories_to_explore = set()
         self.urls_from_files = defaultdict(set)
-        self.juicy_targets = []
+        self._targets = []
         self.secrets_found = []
         self.headers_info = defaultdict(dict)
         self.custom_headers_found = []
@@ -488,7 +488,17 @@ class WebSiteCrawler:
     
         if suspicious_headers:
             print(f"  🟡 Headers suspects: {len(suspicious_headers)}")
-            
+
+
+    def is_juicy_target(self, url):
+        """Vérifie si l'URL est une cible prometteuse"""
+        if not self.is_same_domain(url):
+            return False
+        url_lower = url.lower()
+        for pattern in self.juicy_patterns:
+            if re.search(pattern, url_lower):
+                return True
+        return False
 
     def add_juicy_target(self, url, reason):
         """Ajoute une URL aux cibles prometteuses"""
