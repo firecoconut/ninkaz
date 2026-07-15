@@ -415,6 +415,7 @@ class WebSiteCrawler:
         if 'X-Powered-By' in headers:
             self.technologies.add(f"Framework: {headers['X-Powered-By']}")
 
+    
     def analyze_http_headers(self, url, headers):
         """Capture et analyse les headers HTTP - Focus sécurité"""
         if not self.analyze_headers:
@@ -1275,33 +1276,64 @@ class WebSiteCrawler:
         print("\n" + "="*80)
         print("🔒 ANALYSE DES HEADERS DE SÉCURITÉ")
         print("="*80)
-
+        
         if self.headers_info:
             print(f"\n📊 {len(self.headers_info)} URL(s) analysée(s):\n")
-
-            missing_count = 0
+        
+            total_missing = 0
+            total_disclosure = 0
+            total_suspicious = 0
+            
             for url, info in list(self.headers_info.items())[:10]:
-                if info['missing_security_headers']:
-                    print(f"\n🌐 {url}")
-                    print(f"   ⚠️  Headers manquants: {', '.join(info['missing_security_headers'][:3])}")
-                    missing_count += len(info['missing_security_headers'])
-
+                has_issues = False
+                
+                # Headers manquants
+                if info.get('missing_security_headers'):
+                    if not has_issues:
+                        print(f"\n🌐 {url}")
+                        has_issues = True
+                    
+                    print(f"   🔴 Headers manquants ({len(info['missing_security_headers'])}):")
+                    for header in info['missing_security_headers'][:3]:
+                        print(f"      ❌ {header['header']}")
+                    if len(info['missing_security_headers']) > 3:
+                        print(f"      ... et {len(info['missing_security_headers']) - 3} autres")
+                    total_missing += len(info['missing_security_headers'])
+                
+                # Info disclosure
+                if info.get('info_disclosure'):
+                    if not has_issues:
+                        print(f"\n🌐 {url}")
+                        has_issues = True
+                    
+                    print(f"   🟠 Infos sensibles révélées ({len(info['info_disclosure'])}):")
+                    for header in info['info_disclosure'][:2]:
+                        print(f"      ⚠️  {header['header']}: {header['value']}")
+                    total_disclosure += len(info['info_disclosure'])
+                
+                # Headers suspects
+                if info.get('suspicious_headers'):
+                    if not has_issues:
+                        print(f"\n🌐 {url}")
+                        has_issues = True
+                    
+                    print(f"   🟡 Headers suspects ({len(info['suspicious_headers'])}):")
+                    for header in info['suspicious_headers'][:2]:
+                        print(f"      📋 {header['header']}: {header['value']}")
+                    if len(info['suspicious_headers']) > 2:
+                        print(f"      ... et {len(info['suspicious_headers']) - 2} autres")
+                    total_suspicious += len(info['suspicious_headers'])
+        
             if len(self.headers_info) > 10:
                 print(f"\n... et {len(self.headers_info) - 10} autres URLs")
-
-            print(f"\n📈 Total headers de sécurité manquants: {missing_count}")
+        
+            print(f"\n📈 Résumé sécurité headers:")
+            print(f"   🔴 Headers manquants: {total_missing}")
+            print(f"   🟠 Infos disclosure: {total_disclosure}")
+            print(f"   🟡 Headers suspects: {total_suspicious}")
         else:
             print("\n✅ Aucun header analysé")
 
-        print("\n" + "="*80)
-        print("📄 PAGES INTERNES")
-        print("="*80)
-
-        print(f"\n📑 {len(self.internal_pages)} page(s) interne(s) découverte(s):\n")
-        for page in sorted(self.internal_pages)[:20]:
-            print(f"  🔗 {page}")
-        if len(self.internal_pages) > 20:
-            print(f"  ... et {len(self.internal_pages) - 20} autres")
 
         print("\n" + "="*80)
         print("📎 FICHIERS INTÉRESSANTS")
@@ -1481,7 +1513,7 @@ class WebSiteCrawler:
                     has_issues = False
                     
                     # Headers manquants
-                    if info['missing_security_headers']:
+                    if info.get('missing_security_headers'):
                         if not has_issues:
                             f.write(f"🌐 {url}\n")
                             has_issues = True
@@ -1493,7 +1525,7 @@ class WebSiteCrawler:
                         total_missing += len(info['missing_security_headers'])
                     
                     # Info disclosure
-                    if info['info_disclosure']:
+                    if info.get('info_disclosure'):
                         if not has_issues:
                             f.write(f"🌐 {url}\n")
                             has_issues = True
@@ -1504,7 +1536,7 @@ class WebSiteCrawler:
                         total_disclosure += len(info['info_disclosure'])
                     
                     # Headers suspects
-                    if info['suspicious_headers']:
+                    if info.get('suspicious_headers'):
                         if not has_issues:
                             f.write(f"🌐 {url}\n")
                             has_issues = True
@@ -1532,7 +1564,6 @@ class WebSiteCrawler:
                 f.write("="*80 + "\n")
                 f.write("✅ Aucun header analysé\n\n")
 
-    
             # 🎯 JUICY TARGETS
             if self.juicy_targets:
                 f.write("🎯 CIBLES JUTEUSES (JUICY TARGETS)\n")
