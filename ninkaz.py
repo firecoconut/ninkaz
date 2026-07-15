@@ -287,7 +287,7 @@ class WebSiteCrawler:
             'interesting_files': list(self.interesting_files),
             'directories_to_explore': list(self.directories_to_explore),
             'urls_from_files': {k: list(v) for k, v in self.urls_from_files.items()},
-            '': self.,
+            'juicy_targets': self.juicy_targets,
             'secrets_found': self.secrets_found,
             'technologies': list(self.technologies),
         }
