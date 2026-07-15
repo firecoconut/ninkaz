@@ -317,7 +317,7 @@ class WebSiteCrawler:
             self.interesting_files = set(checkpoint['interesting_files'])
             self.directories_to_explore = set(checkpoint['directories_to_explore'])
             self.urls_from_files = defaultdict(set, {k: set(v) for k, v in checkpoint['urls_from_files'].items()})
-            self. = checkpoint.get('', [])
+            self.juicy_targets = checkpoint.get('juicy_targets', [])
             self.secrets_found = checkpoint.get('secrets_found', [])
             self.technologies = set(checkpoint.get('technologies', []))
 
