@@ -330,6 +330,7 @@ class WebSiteCrawler:
             print(f"❌ Erreur lors du chargement du checkpoint: {e}")
             return False
 
+    
     def apply_rate_limit(self):
         """Applique le rate limiting si configuré"""
         if not self.rate_limit:
