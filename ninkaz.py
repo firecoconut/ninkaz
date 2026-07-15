@@ -13,7 +13,7 @@ import random
 from datetime import datetime
 from difflib import unified_diff
 
-class WebSiteCrawler:
+class WebSiteer:
     def __init__(self, base_url, delay=1, verbose=False, user_agent=None, rate_limit=None,
              checkpoint_file="crawler_checkpoint.json", single_file=False, max_depth=None,
              include_pattern=None, exclude_pattern=None, scan_secrets=False,
@@ -976,165 +976,201 @@ class WebSiteCrawler:
             if self.is_juicy_target(url):
                 self.add_juicy_target(url, "Fichier analysé avec pattern sensible")
 
-    def crawl(self, url, depth=0):
-        """Crawle récursivement une URL"""
-        if self.max_depth and depth > self.max_depth:
-            return
-
-        url = self.normalize_url(url)
-
-        if url in self.visited_urls:
-            return
-
-        self.visited_urls.add(url)
-        self.url_depths[url] = depth
-
-        total = self.get_total_urls_to_explore()
-        current = len(self.visited_urls)
-        print(f"🕷️  Exploration [{current} / {total}] (profondeur: {depth}): {url}")
-
-        if current % 50 == 0 and not self.single_file:
-            self.save_checkpoint()
-            print(f"  💾 Checkpoint automatique sauvegardé")
-
-        time.sleep(self.get_random_delay())
-
-        response = self.fetch_page(url)
-        if not response:
-            return
-
-        content_type = response.headers.get('Content-Type', '').lower()
-
-        self.analyze_http_headers(url, response.headers)
-        self.scan_custom_headers(response.headers, url)
-
-        if self.is_parseable(url):
-            try:
+    def crawl(self, start_url, depth=0):
+        """Crawle itérativement une URL (sans récursion)"""
+        from collections import deque
+        
+        # Queue : (url, depth)
+        queue = deque([(self.normalize_url(start_url), 0)])
+        
+        while queue and not self.interrupted:
+            url, current_depth = queue.popleft()
+            
+            # Vérifier les limites
+            if self.max_depth and current_depth > self.max_depth:
+                continue
+            
+            if url in self.visited_urls:
+                continue
+            
+            self.visited_urls.add(url)
+            self.url_depths[url] = current_depth
+            
+            total = self.get_total_urls_to_explore()
+            current = len(self.visited_urls)
+            print(f"🕷️  Exploration [{current} / {total}] (profondeur: {current_depth}): {url}")
+            
+            # Checkpoint automatique
+            if current % 50 == 0 and not self.single_file:
+                self.save_checkpoint()
+                print(f"  💾 Checkpoint automatique sauvegardé")
+            
+            time.sleep(self.get_random_delay())
+            
+            response = self.fetch_page(url)
+            if not response:
+                continue
+            
+            content_type = response.headers.get('Content-Type', '').lower()
+            
+            # Analyser les headers
+            self.analyze_http_headers(url, response.headers)
+            self.scan_custom_headers(response.headers, url)
+            
+            # Traiter le contenu si parseable
+            if self.is_parseable(url):
                 try:
-                    content = response.text
-                except:
-                    content = response.content.decode('utf-8', errors='ignore')
+                    try:
+                        content = response.text
+                    except:
+                        content = response.content.decode('utf-8', errors='ignore')
+                    
+                    self.scan_for_secrets(content, url)
+                    self.detect_technologies(content, response.headers)
+                    
+                    found_urls = self.extract_urls_from_content(content, url)
+                    
+                    if found_urls:
+                        print(f"  🔗 {len(found_urls)} URL(s) trouvée(s)")
+                        self.process_discovered_urls(found_urls, url)
+                    
+                except Exception as e:
+                    self.log(f"Erreur analyse {url}: {e}", "ERROR")
+            
+            # Ajouter les répertoires parents
+            self.add_parent_directories_to_explore(url)
+            
+            # Ajouter le répertoire du fichier
+            if self.has_file_extension(urlparse(url).path):
+                self.add_file_directory_to_explore(url)
+            
+            # Vérifier si c'est un fichier intéressant
+            if self.is_interesting_file(url):
+                self.interesting_files.add(url)
+                print(f"  📄 Fichier intéressant: {url}")
+                
+                if self.is_juicy_target(url):
+                    self.add_juicy_target(url, "Fichier intéressant avec pattern sensible")
+            
+            # Traiter les ressources HTML
+            if 'text/html' in content_type or 'application/xhtml' in content_type:
+                try:
+                    resources = self.extract_resources(url, response.text)
+                    
+                    for resource in resources:
+                        # Gérer les variables ${...}
+                        if '${' in resource:
+                            self.urls_from_files[url].add(resource)
+                            self.add_parent_directories_to_explore(resource)
+                            if not self.is_same_domain(resource):
+                                clean_url = re.sub(r'\$\{[^}]+\}', '[VAR]', resource)
+                                self.external_urls.add(clean_url)
+                            continue
+                        
+                        if resource in self.visited_urls:
+                            continue
+                        
+                        if self.is_same_domain(resource):
+                            self.add_parent_directories_to_explore(resource)
+                            
+                            if self.has_file_extension(urlparse(resource).path):
+                                self.add_file_directory_to_explore(resource)
+                            
+                            if self.should_ignore(resource):
+                                continue
+                            
+                            if self.is_interesting_file(resource):
+                                self.interesting_files.add(resource)
+                                print(f"  📄 Fichier intéressant: {resource}")
+                                
+                                if self.is_juicy_target(resource):
+                                    self.add_juicy_target(resource, f"Fichier intéressant trouvé dans {url}")
+                                
+                                queue.append((resource, current_depth + 1))
+                            else:
+                                self.internal_pages.add(resource)
+                                queue.append((resource, current_depth + 1))
+                        else:
+                            self.external_urls.add(resource)
+                
+                except Exception as e:
+                    self.log(f"Erreur extraction ressources {url}: {e}", "ERROR")
 
-                self.scan_for_secrets(content, url)
-
-                self.detect_technologies(content, response.headers)
-
-                found_urls = self.extract_urls_from_content(content, url)
-
-                if found_urls:
-                    print(f"  🔗 {len(found_urls)} URL(s) trouvée(s)")
-                    self.process_discovered_urls(found_urls, url)
-
-            except Exception as e:
-                self.log(f"Erreur analyse {url}: {e}", "ERROR")
-
-        self.add_parent_directories_to_explore(url)
-
-        if self.has_file_extension(urlparse(url).path):
-            self.add_file_directory_to_explore(url)
-
-        if self.is_interesting_file(url):
-            self.interesting_files.add(url)
-            print(f"  📄 Fichier intéressant: {url}")
-
-            if self.is_juicy_target(url):
-                self.add_juicy_target(url, "Fichier intéressant avec pattern sensible")
-
-        if 'text/html' not in content_type and 'application/xhtml' not in content_type:
-            return
-
-        resources = self.extract_resources(url, response.text)
-
-        for resource in resources:
-            if '${' in resource:
-                self.urls_from_files[url].add(resource)
-                self.add_parent_directories_to_explore(resource)
-                if not self.is_same_domain(resource):
-                    clean_url = re.sub(r'\$\{[^}]+\}', '[VAR]', resource)
-                    self.external_urls.add(clean_url)
-                continue
-
-            if resource in self.visited_urls:
-                continue
-
-            if self.is_same_domain(resource):
-                self.add_parent_directories_to_explore(resource)
-
-                if self.has_file_extension(urlparse(resource).path):
-                    self.add_file_directory_to_explore(resource)
-
-                if self.should_ignore(resource):
-                    continue
-
-                if self.is_interesting_file(resource):
-                    self.interesting_files.add(resource)
-                    print(f"  📄 Fichier intéressant: {resource}")
-
-                    if self.is_juicy_target(resource):
-                        self.add_juicy_target(resource, f"Fichier intéressant trouvé dans {url}")
-
-                    self.directories_to_explore.add(resource)
-                else:
-                    self.internal_pages.add(resource)
-                    self.crawl(resource, depth + 1)
-            else:
-                self.external_urls.add(resource)
-
+    
     def explore_directories(self):
-        """Explore tous les répertoires découverts"""
+        """Explore tous les répertoires découverts (itératif)"""
         print("\n📂 Exploration des répertoires découverts...")
-
+        
         iteration = 0
         max_iterations = 100
-
-        while self.directories_to_explore and iteration < max_iterations:
+        
+        while self.directories_to_explore and iteration < max_iterations and not self.interrupted:
             iteration += 1
             print(f"\n🔄 Itération {iteration} - {len(self.directories_to_explore)} répertoires à explorer")
-
+            
             dirs_to_process = list(self.directories_to_explore)
             self.directories_to_explore.clear()
-
+            
             for directory in dirs_to_process:
                 if directory not in self.visited_urls and self.is_same_domain(directory):
                     depth = self.url_depths.get(directory, 1)
+                    
+                    # Limiter la profondeur
+                    if self.max_depth and depth > self.max_depth:
+                        continue
+                    
+                    # Appeler crawl (qui est maintenant itératif)
                     self.crawl(directory, depth)
-
+            
             if not self.directories_to_explore:
                 break
-
+        
         if iteration >= max_iterations:
             print(f"⚠️  Limite d'itérations atteinte ({max_iterations})")
-
+        
         print(f"\n✅ Exploration des répertoires terminée après {iteration} itération(s)")
 
+    
+    def should_continue_crawling(self):
+        """Vérifie si on doit continuer le crawl (limite de mémoire)"""
+        total_urls = len(self.visited_urls) + len(self.internal_pages) + len(self.external_urls)
+        
+        # Limite : 10 000 URLs max
+        if total_urls > 10000:
+            print(f"\n⚠️  Limite d'URLs atteinte ({total_urls})")
+            return False
+        
+        return True
+            
     def start(self, resume=False, diff_file=None):
         """Démarre le crawl"""
         if self.single_file:
             self.crawl_single_file(self.base_url)
             self.generate_report()
             return
-
+        
         if resume:
             if not self.load_checkpoint():
                 print("❌ Impossible de reprendre, démarrage d'un nouveau crawl")
                 resume = False
-
+        
         if not resume:
             print(f"🚀 Démarrage du crawl de: {self.base_url}\n")
             self.crawl(self.base_url, depth=0)
         else:
             print(f"🔄 Reprise du crawl de: {self.base_url}\n")
             print(f"⏳ Reprise avec {len(self.directories_to_explore)} URLs en attente\n")
-
+        
         if self.wordlist:
             wordlist_paths = self.load_wordlist()
             self.fuzz_directories(self.base_url, wordlist_paths)
-
+        
         self.explore_directories()
         self.generate_report()
-
+        
         if diff_file:
             self.compare_with_previous(diff_file)
+
 
     def compare_with_previous(self, previous_file):
         """Compare avec un crawl précédent"""
