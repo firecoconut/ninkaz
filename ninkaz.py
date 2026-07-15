@@ -488,7 +488,7 @@ class WebSiteCrawler:
     
         if suspicious_headers:
             print(f"  🟡 Headers suspects: {len(suspicious_headers)}")
-
+            
 
     def add_juicy_target(self, url, reason):
         """Ajoute une URL aux cibles prometteuses"""
@@ -1351,7 +1351,6 @@ class WebSiteCrawler:
         else:
             self.export_txt(filename)
 
-    
     def export_json(self, filename):
         """Exporte les résultats en JSON"""
         total_urls_in_files = sum(len(urls) for urls in self.urls_from_files.values())
@@ -1400,7 +1399,6 @@ class WebSiteCrawler:
             json.dump(data, f, indent=2, ensure_ascii=False)
     
         print(f"\n✅ Rapport JSON exporté dans: {filename}")
-
 
 
     def export_txt(self, filename):
@@ -1530,6 +1528,7 @@ class WebSiteCrawler:
                 f.write("🔒 ANALYSE DES HEADERS DE SÉCURITÉ\n")
                 f.write("="*80 + "\n")
                 f.write("✅ Aucun header analysé\n\n")
+
 
             # 🎯 JUICY TARGETS
             if self.juicy_targets:
