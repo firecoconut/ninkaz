@@ -12,8 +12,10 @@ import signal
 import random
 from datetime import datetime
 from difflib import unified_diff
+from collections import deque
 
-class WebSiteer:
+
+class WebSiteCrawler:
     def __init__(self, base_url, delay=1, verbose=False, user_agent=None, rate_limit=None,
              checkpoint_file="crawler_checkpoint.json", single_file=False, max_depth=None,
              include_pattern=None, exclude_pattern=None, scan_secrets=False,
