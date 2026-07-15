@@ -1297,7 +1297,7 @@ class WebSiteCrawler:
     def export_json(self, filename):
         """Exporte les résultats en JSON"""
         total_urls_in_files = sum(len(urls) for urls in self.urls_from_files.values())
-
+    
         data = {
             'metadata': {
                 'date': datetime.now().isoformat(),
@@ -1314,6 +1314,7 @@ class WebSiteCrawler:
                 'external_urls': len(self.external_urls),
                 'urls_in_files': total_urls_in_files,
                 'custom_headers_found': len(self.custom_headers_found) if hasattr(self, 'custom_headers_found') else 0,
+                'headers_analyzed': len(self.headers_info),
             },
             'juicy_targets': self.juicy_targets,
             'secrets': self.secrets_found,
@@ -1325,11 +1326,12 @@ class WebSiteCrawler:
             'urls_from_files': {k: sorted(list(v)) for k, v in self.urls_from_files.items()},
             'headers_info': {k: v for k, v in self.headers_info.items()},
         }
-
+    
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
-
+    
         print(f"\n✅ Rapport JSON exporté dans: {filename}")
+
 
     def export_txt(self, filename):
         """Exporte les résultats en TXT"""
@@ -1337,10 +1339,10 @@ class WebSiteCrawler:
             f.write("╔════════════════════════════════════════════════════════════════════════════╗\n")
             f.write("║                    📋 RAPPORT DE CRAWL WEB - BUG BOUNTY                     ║\n")
             f.write("╚════════════════════════════════════════════════════════════════════════════╝\n\n")
-
+    
             f.write(f"📅 Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
             f.write(f"🌐 Site: {self.base_url}\n\n")
-
+    
             f.write("📊 STATISTIQUES\n")
             f.write("="*80 + "\n")
             f.write(f"✓ URLs visitées: {len(self.visited_urls)}\n")
@@ -1349,51 +1351,180 @@ class WebSiteCrawler:
             f.write(f"🎯 Cibles juteuses: {len(self.juicy_targets)}\n")
             f.write(f"🔐 Secrets trouvés: {len(self.secrets_found)}\n")
             f.write(f"🛠️  Technologies: {len(self.technologies)}\n")
-            f.write(f"🌍 URLs externes: {len(self.external_urls)}\n\n")
-
-            if self.juicy_targets:
-                f.write("🎯 CIBLES JUTEUSES\n")
-                f.write("="*80 + "\n")
-                for target in self.juicy_targets[:50]:
-                    f.write(f"  🔗 {target['url']}\n")
-                f.write("\n")
-
+            f.write(f"🌍 URLs externes: {len(self.external_urls)}\n")
+            f.write(f"📋 Headers personnalisés: {len(self.custom_headers_found) if hasattr(self, 'custom_headers_found') else 0}\n")
+            f.write(f"📊 URLs analysées (headers): {len(self.headers_info)}\n\n")
+    
+            # 🔐 SECRETS TROUVÉS
             if self.secrets_found:
                 f.write("🔐 SECRETS TROUVÉS\n")
                 f.write("="*80 + "\n")
-                for secret in self.secrets_found[:50]:
-                    f.write(f"  🔑 {secret['type']}: {secret['url']}\n")
-                    f.write(f"     💾 Valeur: {secret['full_value']}\n")
+                
+                by_severity = defaultdict(list)
+                for secret in self.secrets_found:
+                    by_severity[secret['severity']].append(secret)
+                
+                for severity in ['CRITICAL', 'HIGH', 'MEDIUM']:
+                    if severity in by_severity:
+                        emoji = "🔴" if severity == "CRITICAL" else "🟠" if severity == "HIGH" else "🟡"
+                        f.write(f"\n{emoji} {severity} ({len(by_severity[severity])} secret(s)):\n")
+                        for secret in by_severity[severity][:20]:
+                            f.write(f"  🔑 Type: {secret['type']}\n")
+                            f.write(f"     🌐 URL: {secret['url']}\n")
+                            f.write(f"     💾 Valeur: {secret['full_value']}\n")
+                            f.write(f"     🔒 Masqué: {secret['value']}\n\n")
+                        if len(by_severity[severity]) > 20:
+                            f.write(f"  ... et {len(by_severity[severity]) - 20} autres secrets\n\n")
                 f.write("\n")
-
+            else:
+                f.write("🔐 SECRETS TROUVÉS\n")
+                f.write("="*80 + "\n")
+                f.write("✅ Aucun secret détecté\n\n")
+    
+            # 📋 HEADERS PERSONNALISÉS
+            if hasattr(self, 'custom_headers_found') and self.custom_headers_found:
+                f.write("📋 HEADERS PERSONNALISÉS DÉTECTÉS\n")
+                f.write("="*80 + "\n")
+                
+                by_name = defaultdict(list)
+                for header in self.custom_headers_found:
+                    by_name[header['name']].append(header)
+                
+                for header_name in sorted(by_name.keys()):
+                    occurrences = by_name[header_name]
+                    f.write(f"\n📌 {header_name} ({len(occurrences)} occurrence(s)):\n")
+                    for occurrence in occurrences[:10]:
+                        f.write(f"   🌐 URL: {occurrence['url']}\n")
+                        f.write(f"   💾 Valeur: {occurrence['value']}\n")
+                    if len(occurrences) > 10:
+                        f.write(f"   ... et {len(occurrences) - 10} autres occurrences\n")
+                f.write("\n")
+            else:
+                f.write("📋 HEADERS PERSONNALISÉS DÉTECTÉS\n")
+                f.write("="*80 + "\n")
+                f.write("✅ Aucun header personnalisé détecté\n\n")
+    
+            # 🔒 ANALYSE DES HEADERS DE SÉCURITÉ
+            if self.headers_info:
+                f.write("🔒 ANALYSE DES HEADERS DE SÉCURITÉ\n")
+                f.write("="*80 + "\n")
+                f.write(f"\n📊 {len(self.headers_info)} URL(s) analysée(s):\n\n")
+                
+                for url, info in list(self.headers_info.items())[:30]:
+                    f.write(f"🌐 {url}\n")
+                    f.write(f"   🖥️  Serveur: {info.get('server', 'Unknown')}\n")
+                    f.write(f"   ⚙️  Framework: {info.get('powered_by', 'Unknown')}\n")
+                    
+                    if info['missing_security_headers']:
+                        f.write(f"   ⚠️  Headers manquants ({len(info['missing_security_headers'])}):\n")
+                        for header in info['missing_security_headers']:
+                            f.write(f"      ❌ {header}\n")
+                    else:
+                        f.write(f"   ✅ Tous les headers de sécurité présents\n")
+                    
+                    f.write(f"   📋 Tous les headers:\n")
+                    for header_name, header_value in list(info['all_headers'].items())[:5]:
+                        f.write(f"      • {header_name}: {header_value}\n")
+                    if len(info['all_headers']) > 5:
+                        f.write(f"      ... et {len(info['all_headers']) - 5} autres headers\n")
+                    f.write("\n")
+                
+                if len(self.headers_info) > 30:
+                    f.write(f"... et {len(self.headers_info) - 30} autres URLs\n\n")
+            else:
+                f.write("🔒 ANALYSE DES HEADERS DE SÉCURITÉ\n")
+                f.write("="*80 + "\n")
+                f.write("✅ Aucun header analysé\n\n")
+    
+            # 🎯 JUICY TARGETS
+            if self.juicy_targets:
+                f.write("🎯 CIBLES JUTEUSES (JUICY TARGETS)\n")
+                f.write("="*80 + "\n")
+                
+                by_reason = defaultdict(list)
+                for target in self.juicy_targets:
+                    by_reason[target['reason']].append(target['url'])
+                
+                for reason in sorted(by_reason.keys()):
+                    urls = by_reason[reason]
+                    f.write(f"\n🎪 {reason} ({len(urls)} URL(s)):\n")
+                    for url in sorted(set(urls))[:15]:
+                        f.write(f"   🔗 {url}\n")
+                    if len(urls) > 15:
+                        f.write(f"   ... et {len(urls) - 15} autres\n")
+                f.write("\n")
+            else:
+                f.write("🎯 CIBLES JUTEUSES (JUICY TARGETS)\n")
+                f.write("="*80 + "\n")
+                f.write("✅ Aucune cible juteuse détectée\n\n")
+    
+            # 🛠️ TECHNOLOGIES DÉTECTÉES
             if self.technologies:
                 f.write("🛠️  TECHNOLOGIES DÉTECTÉES\n")
                 f.write("="*80 + "\n")
                 for tech in sorted(self.technologies):
                     f.write(f"  ⚙️  {tech}\n")
                 f.write("\n")
-
+            else:
+                f.write("🛠️  TECHNOLOGIES DÉTECTÉES\n")
+                f.write("="*80 + "\n")
+                f.write("✅ Aucune technologie détectée\n\n")
+    
+            # 📄 PAGES INTERNES
             if self.internal_pages:
                 f.write("📄 PAGES INTERNES\n")
                 f.write("="*80 + "\n")
                 for page in sorted(self.internal_pages)[:100]:
                     f.write(f"  🔗 {page}\n")
+                if len(self.internal_pages) > 100:
+                    f.write(f"  ... et {len(self.internal_pages) - 100} autres\n")
                 f.write("\n")
-
+            else:
+                f.write("📄 PAGES INTERNES\n")
+                f.write("="*80 + "\n")
+                f.write("✅ Aucune page interne découverte\n\n")
+    
+            # 📎 FICHIERS INTÉRESSANTS
             if self.interesting_files:
                 f.write("📎 FICHIERS INTÉRESSANTS\n")
                 f.write("="*80 + "\n")
-                for file in sorted(self.interesting_files)[:50]:
+                for file in sorted(self.interesting_files):
                     f.write(f"  📄 {file}\n")
                 f.write("\n")
-
+            else:
+                f.write("📎 FICHIERS INTÉRESSANTS\n")
+                f.write("="*80 + "\n")
+                f.write("✅ Aucun fichier intéressant découvert\n\n")
+    
+            # 🌍 URLS EXTERNES
             if self.external_urls:
                 f.write("🌍 URLS EXTERNES\n")
                 f.write("="*80 + "\n")
                 for url in sorted(self.external_urls)[:50]:
                     f.write(f"  🌐 {url}\n")
+                if len(self.external_urls) > 50:
+                    f.write(f"  ... et {len(self.external_urls) - 50} autres\n")
                 f.write("\n")
-
+            else:
+                f.write("🌍 URLS EXTERNES\n")
+                f.write("="*80 + "\n")
+                f.write("✅ Aucune URL externe découverte\n\n")
+    
+            # 📊 RÉSUMÉ FINAL
+            f.write("📊 RÉSUMÉ FINAL\n")
+            f.write("="*80 + "\n")
+            total_urls_in_files = sum(len(urls) for urls in self.urls_from_files.values())
+            f.write(f"✓ Total URLs visitées: {len(self.visited_urls)}\n")
+            f.write(f"📄 Pages internes: {len(self.internal_pages)}\n")
+            f.write(f"📎 Fichiers intéressants: {len(self.interesting_files)}\n")
+            f.write(f"🎯 Juicy Targets: {len(self.juicy_targets)}\n")
+            f.write(f"🔐 Secrets détectés: {len(self.secrets_found)}\n")
+            f.write(f"🛠️  Technologies: {len(self.technologies)}\n")
+            f.write(f"🌍 URLs externes: {len(self.external_urls)}\n")
+            f.write(f"🔗 URLs trouvées dans fichiers: {total_urls_in_files}\n")
+            f.write(f"📋 Headers personnalisés: {len(self.custom_headers_found) if hasattr(self, 'custom_headers_found') else 0}\n")
+            f.write(f"📊 Headers analysés: {len(self.headers_info)}\n")
+    
         print(f"\n✅ Rapport TXT exporté dans: {filename}")
 
 
