@@ -1290,11 +1290,9 @@ class WebSiteCrawler:
                 if severity in by_severity:
                     emoji = "🔴" if severity == "CRITICAL" else "🟠" if severity == "HIGH" else "🟡"
                     print(f"\n{emoji} {severity}:")
-                    for secret in by_severity[severity][:10]:
+                    for secret in by_severity[severity]:
                         print(f"  🔑 {secret['type']}: {secret['url']}")
                         print(f"     💾 Valeur complète: {secret['full_value']}")
-                    if len(by_severity[severity]) > 10:
-                        print(f"  ... et {len(by_severity[severity]) - 10} autres")
         else:
             print("\n✅ Aucun secret détecté")
 
@@ -1314,8 +1312,6 @@ class WebSiteCrawler:
                 for occurrence in occurrences[:5]:
                     print(f"     🌐 {occurrence['url']}")
                     print(f"     💾 Valeur: {occurrence['value']}")
-                if len(occurrences) > 5:
-                    print(f"     ... et {len(occurrences) - 5} autres occurrences")
         else:
             print("\n✅ Aucun header personnalisé détecté")
 
@@ -1328,10 +1324,8 @@ class WebSiteCrawler:
 
             for reason, urls in sorted(by_reason.items()):
                 print(f"\n🎯 {reason} ({len(urls)} URL(s)):")
-                for url in sorted(set(urls))[:10]:
+                for url in sorted(set(urls)):
                     print(f"   🔗 {url}")
-                if len(urls) > 10:
-                    print(f"   ... et {len(urls) - 10} autres")
         else:
             print("\n✅ Aucune cible prometteuse détectée")
 
@@ -1357,7 +1351,7 @@ class WebSiteCrawler:
             total_disclosure = 0
             total_suspicious = 0
             
-            for url, info in list(self.headers_info.items())[:20]:
+            for url, info in list(self.headers_info.items()):
                 has_issues = False
                 
                 # Headers manquants
@@ -1392,8 +1386,6 @@ class WebSiteCrawler:
                 if has_issues:
                     print()
         
-            if len(self.headers_info) > 20:
-                print(f"... et {len(self.headers_info) - 20} autres URLs\n")
         
             print(f"📈 Résumé sécurité headers:")
             print(f"   🔴 Headers manquants: {total_missing}")
@@ -1529,13 +1521,11 @@ class WebSiteCrawler:
                     if severity in by_severity:
                         emoji = "🔴" if severity == "CRITICAL" else "🟠" if severity == "HIGH" else "🟡"
                         f.write(f"\n{emoji} {severity} ({len(by_severity[severity])} secret(s)):\n")
-                        for secret in by_severity[severity][:20]:
+                        for secret in by_severity[severity]:
                             f.write(f"  🔑 Type: {secret['type']}\n")
                             f.write(f"     🌐 URL: {secret['url']}\n")
                             f.write(f"     💾 Valeur: {secret['full_value']}\n")
                             f.write(f"     🔒 Masqué: {secret['value']}\n\n")
-                        if len(by_severity[severity]) > 20:
-                            f.write(f"  ... et {len(by_severity[severity]) - 20} autres secrets\n\n")
                 f.write("\n")
             else:
                 f.write("🔐 SECRETS TROUVÉS\n")
@@ -1554,11 +1544,9 @@ class WebSiteCrawler:
                 for header_name in sorted(by_name.keys()):
                     occurrences = by_name[header_name]
                     f.write(f"\n📌 {header_name} ({len(occurrences)} occurrence(s)):\n")
-                    for occurrence in occurrences[:10]:
+                    for occurrence in occurrences:
                         f.write(f"   🌐 URL: {occurrence['url']}\n")
                         f.write(f"   💾 Valeur: {occurrence['value']}\n")
-                    if len(occurrences) > 10:
-                        f.write(f"   ... et {len(occurrences) - 10} autres occurrences\n")
                 f.write("\n")
             else:
                 f.write("📋 HEADERS PERSONNALISÉS DÉTECTÉS\n")
@@ -1574,7 +1562,7 @@ class WebSiteCrawler:
                 total_disclosure = 0
                 total_suspicious = 0
                 
-                for url, info in list(self.headers_info.items())[:50]:
+                for url, info in list(self.headers_info.items()):
                     has_issues = False
                     
                     # Headers manquants
@@ -1609,9 +1597,6 @@ class WebSiteCrawler:
                     if has_issues:
                         f.write("\n")
                 
-                if len(self.headers_info) > 50:
-                    f.write(f"... et {len(self.headers_info) - 50} autres URLs\n\n")
-                
                 # Résumé
                 f.write("📊 RÉSUMÉ SÉCURITÉ HEADERS:\n")
                 f.write(f"   🔴 Headers manquants: {total_missing}\n")
@@ -1635,10 +1620,8 @@ class WebSiteCrawler:
                 for reason in sorted(by_reason.keys()):
                     urls = by_reason[reason]
                     f.write(f"\n🎪 {reason} ({len(urls)} URL(s)):\n")
-                    for url in sorted(set(urls))[:15]:
+                    for url in sorted(set(urls)):
                         f.write(f"   🔗 {url}\n")
-                    if len(urls) > 15:
-                        f.write(f"   ... et {len(urls) - 15} autres\n")
                 f.write("\n")
             else:
                 f.write("🎯 CIBLES JUTEUSES (JUICY TARGETS)\n")
