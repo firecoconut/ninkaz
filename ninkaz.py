@@ -813,23 +813,23 @@ class WebSiteCrawler:
         return normalized
 
 
-def add_parent_directories_to_explore(self, url):
-    """Ajoute tous les répertoires parents à la liste d'exploration - VERSION SÉCURISÉE"""
-    if self.single_file:
-        return
-    
-    parent_dirs = self.extract_parent_directories(url)
-    for directory in parent_dirs:
-        normalized_dir = self.normalize_url(directory)
+    def add_parent_directories_to_explore(self, url):
+        """Ajoute tous les répertoires parents à la liste d'exploration - VERSION SÉCURISÉE"""
+        if self.single_file:
+            return
         
-        # ✅ Vérifier UNIQUEMENT visited_urls (set() gère les doublons dans directories_to_explore)
-        if normalized_dir in self.visited_urls:
-            continue
-        if not self.is_same_domain(normalized_dir):
-            continue
+        parent_dirs = self.extract_parent_directories(url)
+        for directory in parent_dirs:
+            normalized_dir = self.normalize_url(directory)
+            
+            # ✅ Vérifier UNIQUEMENT visited_urls (set() gère les doublons dans directories_to_explore)
+            if normalized_dir in self.visited_urls:
+                continue
+            if not self.is_same_domain(normalized_dir):
+                continue
+            
+            self.directories_to_explore.add(normalized_dir)
         
-        self.directories_to_explore.add(normalized_dir)
-    
 
     def add_file_directory_to_explore(self, url):
         """Ajoute le répertoire contenant un fichier à la liste d'exploration"""
