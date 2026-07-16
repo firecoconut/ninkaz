@@ -810,15 +810,41 @@ class WebSiteCrawler:
         return normalized
 
     def add_parent_directories_to_explore(self, url):
-        """Ajoute tous les répertoires parents à la liste d'exploration"""
+        """Ajoute SEULEMENT le répertoire parent direct (pas tous les parents)"""
         if self.single_file:
             return
+    
+        parsed = urlparse(url)
+        path = parsed.path.rstrip('/')
+    
+        if '${' in path:
+            path = path.split('${')[0].rstrip('/')
+    
+        if not path or path == '/':
+            return
+    
+        # ✅ Ajouter SEULEMENT le répertoire parent direct
+        parts = path.split('/')
+        
+        if self.has_file_extension(path):
+            # C'est un fichier, ajouter son répertoire
+            if len(parts) > 1:
+                parent_path = '/'.join(parts[:-1]) + '/'
+                parent_url = f"{parsed.scheme}://{parsed.netloc}{parent_path}"
+                normalized = self.normalize_url(parent_url)
+                
+                if normalized not in self.visited_urls and normalized not in self.directories_to_explore:
+                    self.directories_to_explore.add(normalized)
+        else:
+            # C'est un répertoire, ajouter son parent SEULEMENT s'il est plus profond que la racine
+            if len(parts) > 2:  # Plus que juste le domaine et un niveau
+                parent_path = '/'.join(parts[:-1]) + '/'
+                parent_url = f"{parsed.scheme}://{parsed.netloc}{parent_path}"
+                normalized = self.normalize_url(parent_url)
+                
+                if normalized not in self.visited_urls and normalized not in self.directories_to_explore:
+                    self.directories_to_explore.add(normalized)
 
-        parent_dirs = self.extract_parent_directories(url)
-        for directory in parent_dirs:
-            normalized_dir = self.normalize_url(directory)
-            if normalized_dir not in self.visited_urls:
-                self.directories_to_explore.add(normalized_dir)
 
     def add_file_directory_to_explore(self, url):
         """Ajoute le répertoire contenant un fichier à la liste d'exploration"""
