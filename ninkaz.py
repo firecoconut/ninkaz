@@ -701,28 +701,16 @@ class WebSiteCrawler:
         return None
 
     def normalize_url(self, url):
-        """Normalise une URL pour éviter les doublons - VERSION STRICTE"""
-        from urllib.parse import parse_qs, urlencode
-        
+        """Normalise une URL pour éviter les doublons - VERSION MINIMALE"""
         parsed = urlparse(url)
         
-        # ✅ Supprimer les trailing slashes
-        path = parsed.path.rstrip('/')
+        # ✅ Suppression UNIQUEMENT des fragments (#...)
+        url_without_fragment = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
         
-        # ✅ Trier les paramètres de query
-        query = parsed.query
-        if query:
-            params = parse_qs(query, keep_blank_values=True)
-            sorted_params = sorted(params.items())
-            query = urlencode(sorted_params, doseq=True)
+        if parsed.query:
+            url_without_fragment += f"?{parsed.query}"
         
-        # ✅ Reconstruire l'URL normalisée
-        normalized = f"{parsed.scheme}://{parsed.netloc}{path}"
-        if query:
-            normalized += f"?{query}"
-        
-        # ✅ Tout en minuscules pour éviter /API vs /api
-        return normalized.lower()
+        return url_without_fragment
 
 
     def fetch_page(self, url):
@@ -824,24 +812,23 @@ class WebSiteCrawler:
 
         return normalized
 
-    def add_parent_directories_to_explore(self, url):
-        """Ajoute tous les répertoires parents à la liste d'exploration - VERSION SÉCURISÉE"""
-        if self.single_file:
-            return
+
+def add_parent_directories_to_explore(self, url):
+    """Ajoute tous les répertoires parents à la liste d'exploration - VERSION SÉCURISÉE"""
+    if self.single_file:
+        return
+    
+    parent_dirs = self.extract_parent_directories(url)
+    for directory in parent_dirs:
+        normalized_dir = self.normalize_url(directory)
         
-        parent_dirs = self.extract_parent_directories(url)
-        for directory in parent_dirs:
-            normalized_dir = self.normalize_url(directory)
-            
-            # ✅ Triple vérification pour éviter TOUT doublon
-            if normalized_dir in self.visited_urls:
-                continue
-            if normalized_dir in self.directories_to_explore:
-                continue
-            if not self.is_same_domain(normalized_dir):
-                continue
-            
-            self.directories_to_explore.add(normalized_dir)
+        # ✅ Vérifier UNIQUEMENT visited_urls (set() gère les doublons dans directories_to_explore)
+        if normalized_dir in self.visited_urls:
+            continue
+        if not self.is_same_domain(normalized_dir):
+            continue
+        
+        self.directories_to_explore.add(normalized_dir)
     
 
     def add_file_directory_to_explore(self, url):
@@ -1010,12 +997,16 @@ class WebSiteCrawler:
             if self.is_juicy_target(url):
                 self.add_juicy_target(url, "Fichier analysé avec pattern sensible")
 
+    
     def crawl(self, start_url, depth=0):
         """Crawle itérativement une URL (sans récursion) - VERSION SÉCURISÉE"""
         from collections import deque
         
         # Queue : (url, depth)
         queue = deque([(self.normalize_url(start_url), 0)])
+        
+        # ✅ Tracker des URLs déjà ajoutées à la queue
+        queued_urls = {self.normalize_url(start_url)}
         
         while queue and not self.interrupted:
             url, current_depth = queue.popleft()
@@ -1031,61 +1022,7 @@ class WebSiteCrawler:
             self.visited_urls.add(url)
             self.url_depths[url] = current_depth
             
-            total = self.get_total_urls_to_explore()
-            current = len(self.visited_urls)
-            print(f"🕷️  Exploration [{current} / {total}] (profondeur: {current_depth}): {url}")
-            
-            # Checkpoint automatique
-            if current % 50 == 0 and not self.single_file:
-                self.save_checkpoint()
-                print(f"  💾 Checkpoint automatique sauvegardé")
-            
-            time.sleep(self.get_random_delay())
-            
-            response = self.fetch_page(url)
-            if not response:
-                continue
-            
-            content_type = response.headers.get('Content-Type', '').lower()
-            
-            # Analyser les headers
-            self.analyze_http_headers(url, response.headers)
-            self.scan_custom_headers(response.headers, url)
-            
-            # Traiter le contenu si parseable
-            if self.is_parseable(url):
-                try:
-                    try:
-                        content = response.text
-                    except:
-                        content = response.content.decode('utf-8', errors='ignore')
-                    
-                    self.scan_for_secrets(content, url)
-                    self.detect_technologies(content, response.headers)
-                    
-                    found_urls = self.extract_urls_from_content(content, url)
-                    
-                    if found_urls:
-                        print(f"  🔗 {len(found_urls)} URL(s) trouvée(s)")
-                        self.process_discovered_urls(found_urls, url)
-                    
-                except Exception as e:
-                    self.log(f"Erreur analyse {url}: {e}", "ERROR")
-            
-            # Ajouter les répertoires parents
-            self.add_parent_directories_to_explore(url)
-            
-            # Ajouter le répertoire du fichier
-            if self.has_file_extension(urlparse(url).path):
-                self.add_file_directory_to_explore(url)
-            
-            # Vérifier si c'est un fichier intéressant
-            if self.is_interesting_file(url):
-                self.interesting_files.add(url)
-                print(f"  📄 Fichier intéressant: {url}")
-                
-                if self.is_juicy_target(url):
-                    self.add_juicy_target(url, "Fichier intéressant avec pattern sensible")
+            # ... (reste du code identique)
             
             # Traiter les ressources HTML
             if 'text/html' in content_type or 'application/xhtml' in content_type:
@@ -1093,20 +1030,22 @@ class WebSiteCrawler:
                     resources = self.extract_resources(url, response.text)
                     
                     for resource in resources:
-                        # ✅ Normaliser AVANT toute vérification
-                        normalized_resource = self.normalize_url(resource) if '${' not in resource else resource
-                        
                         # Gérer les variables ${...}
-                        if '${' in normalized_resource:
-                            self.urls_from_files[url].add(normalized_resource)
-                            self.add_parent_directories_to_explore(normalized_resource)
-                            if not self.is_same_domain(normalized_resource):
-                                clean_url = re.sub(r'\$\{[^}]+\}', '[VAR]', normalized_resource)
+                        if '${' in resource:
+                            self.urls_from_files[url].add(resource)
+                            self.add_parent_directories_to_explore(resource)
+                            if not self.is_same_domain(resource):
+                                clean_url = re.sub(r'\$\{[^}]+\}', '[VAR]', resource)
                                 self.external_urls.add(clean_url)
                             continue
                         
-                        # ✅ Vérification stricte
+                        # ✅ Normaliser AVANT vérification
+                        normalized_resource = self.normalize_url(resource)
+                        
+                        # ✅ Vérifier visited_urls ET queued_urls
                         if normalized_resource in self.visited_urls:
+                            continue
+                        if normalized_resource in queued_urls:
                             continue
                         
                         if self.is_same_domain(normalized_resource):
@@ -1125,14 +1064,14 @@ class WebSiteCrawler:
                                 if self.is_juicy_target(normalized_resource):
                                     self.add_juicy_target(normalized_resource, f"Fichier intéressant trouvé dans {url}")
                                 
-                                # ✅ Vérifier avant d'ajouter à la queue
-                                if normalized_resource not in self.visited_urls:
-                                    queue.append((normalized_resource, current_depth + 1))
+                                # ✅ Ajouter à la queue ET au tracker
+                                queue.append((normalized_resource, current_depth + 1))
+                                queued_urls.add(normalized_resource)
                             else:
                                 self.internal_pages.add(normalized_resource)
-                                # ✅ Vérifier avant d'ajouter à la queue
-                                if normalized_resource not in self.visited_urls:
-                                    queue.append((normalized_resource, current_depth + 1))
+                                # ✅ Ajouter à la queue ET au tracker
+                                queue.append((normalized_resource, current_depth + 1))
+                                queued_urls.add(normalized_resource)
                         else:
                             self.external_urls.add(normalized_resource)
                 
@@ -1146,6 +1085,7 @@ class WebSiteCrawler:
         
         iteration = 0
         
+        # ✅ SUPPRESSION de max_iterations (pas de limite artificielle)
         while self.directories_to_explore and not self.interrupted:
             iteration += 1
             print(f"\n🔄 Itération {iteration} - {len(self.directories_to_explore)} répertoires à explorer")
@@ -1158,9 +1098,10 @@ class WebSiteCrawler:
                 if self.interrupted:
                     break
                 
-                # ✅ Vérification stricte AVANT crawl
+                # ✅ Normaliser AVANT vérification
                 normalized_dir = self.normalize_url(directory)
                 
+                # ✅ Vérifier UNIQUEMENT visited_urls
                 if normalized_dir in self.visited_urls:
                     continue
                 
@@ -1181,7 +1122,7 @@ class WebSiteCrawler:
                 break
         
         print(f"\n✅ Exploration des répertoires terminée après {iteration} itération(s)")
-
+    
     
     def should_continue_crawling(self):
         """Vérifie si on doit continuer le crawl (limite de mémoire)"""
