@@ -862,12 +862,11 @@ class WebSiteCrawler:
                     self.external_urls.add(clean_url)
                 continue
             
-            # ✅ Vérification stricte AVANT tout traitement
+            # ✅ Normaliser AVANT vérification
             normalized_url = self.normalize_url(url)
             
+            # ✅ Vérifier UNIQUEMENT visited_urls
             if normalized_url in self.visited_urls:
-                continue
-            if normalized_url in self.directories_to_explore:
                 continue
             
             if self.is_same_domain(normalized_url):
@@ -1022,7 +1021,61 @@ class WebSiteCrawler:
             self.visited_urls.add(url)
             self.url_depths[url] = current_depth
             
-            # ... (reste du code identique)
+            total = self.get_total_urls_to_explore()
+            current = len(self.visited_urls)
+            print(f"🕷️  Exploration [{current} / {total}] (profondeur: {current_depth}): {url}")
+            
+            # Checkpoint automatique
+            if current % 50 == 0 and not self.single_file:
+                self.save_checkpoint()
+                print(f"  💾 Checkpoint automatique sauvegardé")
+            
+            time.sleep(self.get_random_delay())
+            
+            response = self.fetch_page(url)
+            if not response:
+                continue
+            
+            content_type = response.headers.get('Content-Type', '').lower()
+            
+            # Analyser les headers
+            self.analyze_http_headers(url, response.headers)
+            self.scan_custom_headers(response.headers, url)
+            
+            # Traiter le contenu si parseable
+            if self.is_parseable(url):
+                try:
+                    try:
+                        content = response.text
+                    except:
+                        content = response.content.decode('utf-8', errors='ignore')
+                    
+                    self.scan_for_secrets(content, url)
+                    self.detect_technologies(content, response.headers)
+                    
+                    found_urls = self.extract_urls_from_content(content, url)
+                    
+                    if found_urls:
+                        print(f"  🔗 {len(found_urls)} URL(s) trouvée(s)")
+                        self.process_discovered_urls(found_urls, url)
+                    
+                except Exception as e:
+                    self.log(f"Erreur analyse {url}: {e}", "ERROR")
+            
+            # Ajouter les répertoires parents
+            self.add_parent_directories_to_explore(url)
+            
+            # Ajouter le répertoire du fichier
+            if self.has_file_extension(urlparse(url).path):
+                self.add_file_directory_to_explore(url)
+            
+            # Vérifier si c'est un fichier intéressant
+            if self.is_interesting_file(url):
+                self.interesting_files.add(url)
+                print(f"  📄 Fichier intéressant: {url}")
+                
+                if self.is_juicy_target(url):
+                    self.add_juicy_target(url, "Fichier intéressant avec pattern sensible")
             
             # Traiter les ressources HTML
             if 'text/html' in content_type or 'application/xhtml' in content_type:
